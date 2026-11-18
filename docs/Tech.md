@@ -43,7 +43,7 @@ flowchart LR
 | `.mcp.json` | Supabase MCP server povezan s projektom (migracije, SQL, advisori, tipovi) |
 | Agent skills | `supabase`, `supabase-postgres-best-practices` (`.agents/skills/`) |
 | `AGENTS.md` | Prije pisanja koda pročitati vodiče u `node_modules/next/dist/docs/` |
-| Supabase baza | **Prazna** (nema tablica) |
+| Supabase baza | Migracije 0001–0008 primijenjene (18. 11. 2026.), SQL u `supabase/migrations/` |
 | `app/todos/page.tsx` | Primjer iz Supabase vodiča. **Briše se** |
 | `app/layout.tsx`, `globals.css` | Zadani Create Next App (Geist font, `lang="en"`). **Zamjenjuje se** |
 
@@ -179,7 +179,20 @@ na svaki zahtjev (osim statike, /prijava, manifest, ikone, sw.js, /api/odrzavanj
 - Ako se aplikacija ne otvori 7 dana, preglednik sam izbriše kolačić i sljedeći zahtjev odjavljuje korisnika.
 - Ovo radi **po uređaju**, što odgovara zahtjevu.
 - Server Actions i Data Access Layer (`lib/data/*`) **dodatno** provjeravaju korisnika (`getClaims()`). Ne oslanjaju se samo na proxy.
-- **Odjava**: Server Action → `signOut()` + brisanje `zadnja_aktivnost` → `/prijava`.
+- **Odjava**: Server Action → `signOut({ scope: 'local' })` (samo ovaj uređaj) + brisanje `zadnja_aktivnost` → `/prijava`.
+
+**Provjera vlasnika**
+- Prijava (`app/prijava/actions.ts`): nakon `signInWithPassword` provjerava red u `vlasnici`. Ako ga nema, slijedi `signOut` i poruka „Ovaj nalog nema pristup aplikaciji.".
+- DAL `lib/auth.ts` → `dohvatiVlasnika()` (React `cache`) vraća `{ id, ime, email }`. Bez sesije → `/prijava`. Bez reda u `vlasnici` → `/odjava?razlog=pristup`.
+- `dohvatiVlasnika()` poziva `await io()` (iz `next/cache`) nakon `await cookies()`. Uz Partial Prefetching se kolačići čitaju i tijekom runtime prefetcha, a `getClaims()` poziva `Date.now()`. Bez `io()` Next javlja grešku „unstable value `Date.now()` while prerendering".
+- `app/odjava/route.ts` (GET) postoji jer Server Component ne može brisati kolačiće: odjavi korisnika i preusmjeri na `/prijava?razlog=pristup`.
+- Konstante kolačića i `sigurnaPutanja()` (zaštita `?next=` od open redirecta) nalaze se u `lib/sesija.ts`.
+
+**Lozinka**
+- Zaboravljenu lozinku resetira administrator u dashboardu (§15). Na prijavi stoji samo uputa.
+- Promjena lozinke je u Postavkama (`app/(app)/postavke/actions.ts`): trenutna + nova (min. 8) + ponovi.
+  - Trenutna lozinka se provjerava na zasebnom supabase-js klijentu bez kolačića (`persistSession: false`), čija se privremena sesija odmah odjavljuje.
+  - Zatim slijedi `auth.updateUser({ password })`.
 
 ## 7. Tok podataka
 
@@ -372,7 +385,7 @@ function preuzmi(file: File) {
 
 - **RLS je uključen na svim tablicama.** Politike dopuštaju sve operacije samo ulozi `authenticated`, a `anon` nema pristup ničemu osim `ping()`.
 - Publishable ključ je javan po dizajnu. Zaštita podataka je RLS.
-- RPC funkcije su `security invoker` sa `set search_path = ''`, pa RLS vrijedi i unutar njih.
+- RPC funkcije koje pišu su `security definer` sa `set search_path = ''` i prvo provjeravaju `private.je_vlasnik()`. One su jedini put za upis u `kretanja_stanja` i `predracuni`. `ping()` je `security invoker`. Supabase advisor za njih javlja WARN `authenticated_security_definer_function_executable`, što je namjerno.
 - Storage: čitanje slika je javno (nisu povjerljive), a upload i brisanje samo za `authenticated`.
 - Server Actions validiraju ulaz (`zod`) i provjeravaju prijavu.
 - Sigurnosni HTTP headeri (§12).

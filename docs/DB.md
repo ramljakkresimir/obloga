@@ -477,23 +477,21 @@ grant  execute on function public.potvrdi_predracun(bigint) to authenticated;
 
 ### 6.1 Prava na tablice (GRANT)
 
-Supabase po zadanom daje `anon` i `authenticated` sva prava na nove tablice, pa se izričito sužavaju:
+Na ovom projektu nove tablice **ne** dobivaju automatski `select/insert/update/delete` za `anon` i `authenticated` (samo `truncate/references/trigger/maintain`), a nove funkcije ne dobivaju `execute`. Zato se prvo sve oduzme, a onda se izričito dodijeli samo ono što treba. Puni SQL je u `supabase/migrations/0006_prava_rls.sql`.
 
 ```sql
--- anon ne smije ništa
-revoke all on all tables in schema public from anon;
+-- polazište: nitko ništa (uklanja i TRUNCATE, koji RLS ne blokira)
+revoke all on all tables in schema public from anon, authenticated;
 
--- samo čitanje (pisanje isključivo kroz RPC)
-revoke insert, update, delete, truncate on
-  public.vlasnici, public.kretanja_stanja, public.predracuni, public.predracun_stavke
-  from authenticated;
-revoke all on public.brojaci from authenticated;
+-- čitanje: sve tablice osim brojaci
+grant select on public.vlasnici, public.postavke, public.kategorije, public.artikli,
+  public.kretanja_stanja, public.predracuni, public.predracun_stavke, public.biljeske
+  to authenticated;
 
--- postavke: čitanje i izmjena, bez dodavanja/brisanja
-revoke insert, delete, truncate on public.postavke from authenticated;
+grant update on public.postavke to authenticated;                                     -- bez insert/delete
+grant insert, update, delete on public.kategorije, public.biljeske to authenticated;  -- puni CRUD
 
 -- artikli: sve osim stupca stanje
-revoke insert, update, delete, truncate on public.artikli from authenticated;
 grant insert (kategorija_id, naziv, slika, sirina_cm, duzina_cm, m2_po_komadu, cijena_kom, min_stanje, aktivan)
   on public.artikli to authenticated;
 grant update (kategorija_id, naziv, slika, sirina_cm, duzina_cm, m2_po_komadu, cijena_kom, min_stanje, aktivan)
@@ -501,8 +499,8 @@ grant update (kategorija_id, naziv, slika, sirina_cm, duzina_cm, m2_po_komadu, c
 
 -- private shema: samo izvršavanje provjere vlasnika (koriste je politike)
 grant usage on schema private to authenticated;
+revoke execute on all functions in schema private from public, anon, authenticated;
 grant execute on function private.je_vlasnik() to authenticated;
-revoke execute on function private.sljedeci_redni_broj(smallint) from public, anon, authenticated;
 ```
 
 ### 6.2 RLS politike

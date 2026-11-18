@@ -58,8 +58,10 @@ Obloga.ba je mala firma iz Žepča koja prodaje dekorativne zidne obloge i panel
 - Prijava s **email adresom i lozinkom**.
 - Vlasnik **ostaje prijavljen** i ne mora se prijavljivati svaki put kad otvori aplikaciju.
 - Ako aplikaciju **7 dana zaredom** ne otvori na tom uređaju, automatski se odjavljuje i sljedeći put se mora ponovno prijaviti.
-- Ručna odjava je u Postavkama.
+- Ručna odjava je u Postavkama i odjavljuje samo taj uređaj.
 - Nije moguće napraviti novi nalog iz aplikacije.
+- Ako se prijavi nalog koji nije upisan kao vlasnik, odmah se odjavljuje uz poruku „Ovaj nalog nema pristup aplikaciji.".
+- Vlasnik može **promijeniti lozinku** u Postavkama (trenutna + nova). Zaboravljenu lozinku resetira administrator.
 
 ### 5.2 Početna
 
@@ -191,6 +193,7 @@ Početni ekran daje kratak pregled:
 - **Zadana cijena ljepila** (KM/kom).
 - **Kategorije**: dodavanje, preimenovanje, redoslijed. Kategorija se može obrisati samo ako u njoj nema obloga.
 - **Instalacija aplikacije**: kratke upute za Android i iPhone.
+- **Promjena lozinke.**
 - **Odjava.**
 
 ## 6. Poslovna pravila
@@ -318,6 +321,8 @@ Ovo **nije** dio prve verzije, ali se može dodati kasnije:
 - [ ] 1–3 vlasnika s istim pravima (1)
 - [ ] Ostaje prijavljen; automatska odjava nakon **7 dana neaktivnosti** (2)
 - [ ] Ručna odjava u Postavkama
+- [ ] Promjena lozinke u Postavkama
+- [ ] Nalog koji nije vlasnik ne može ući (poruka + odjava)
 
 ### Obloge i stanje
 - [ ] Svaka boja/dezen je zaseban artikl (5)
