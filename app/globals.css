@@ -45,6 +45,11 @@
     outline: 2px solid var(--color-narancasta);
     outline-offset: 2px;
   }
+
+  /* Dok je otvoren modalni <dialog> (DonjiList), stranica ispod se ne pomiče. */
+  html:has(dialog[open]:modal) {
+    overflow: hidden;
+  }
 }
 
 /* Tanka traka od 5 boja loga (motiv brenda). */

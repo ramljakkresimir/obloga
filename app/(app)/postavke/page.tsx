@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { Suspense, type ReactNode } from "react";
+import { Suspense } from "react";
 import { LogOut } from "lucide-react";
 import { odjava } from "@/app/prijava/actions";
 import { dohvatiVlasnika } from "@/lib/auth";
 import { Gumb } from "@/components/ui/Gumb";
+import { Kartica } from "@/components/ui/Kartica";
 import { PromjenaLozinke } from "./PromjenaLozinke";
 
 export const metadata: Metadata = { title: "Postavke" };
@@ -39,14 +40,5 @@ async function PrijavljenKao() {
       Prijavljen kao <span className="font-semibold text-tekst">{vlasnik.ime}</span>
       {vlasnik.email && <> ({vlasnik.email})</>}
     </p>
-  );
-}
-
-function Kartica({ naslov, children }: { naslov: string; children: ReactNode }) {
-  return (
-    <section className="rounded-[var(--radius-kartica)] border border-rub bg-povrsina p-4 shadow-[var(--shadow-kartica)]">
-      <h3 className="mb-4 font-naslov text-lg leading-[26px] font-semibold text-espresso">{naslov}</h3>
-      {children}
-    </section>
   );
 }

@@ -1,7 +1,7 @@
 # Tech – arhitektura i tehnička implementacija
 
 > Kako se aplikacija iz [PRD.md](PRD.md) gradi: stack, servisi, struktura i ključni tokovi. Shema baze je u [DB.md](DB.md).
-> Posljednja izmjena: 18. 11. 2026.
+> Posljednja izmjena: 20. 11. 2026.
 
 ---
 
@@ -51,7 +51,7 @@ flowchart LR
 
 ```bash
 npm i @react-pdf/renderer lucide-react zod
-npm i -D vitest
+npm i -D vitest   # uz @types/node ^24 (peer zahtjev vitesta 5)
 ```
 
 | Paket | Namjena |
@@ -101,7 +101,9 @@ app/
       actions.ts
   api/odrzavanje/route.ts    # keepalive za Supabase (Vercel Cron)
 components/
-  ui/                        # Button, Input, BrojInput, Card, Sheet, Badge, Toggle, Chip, Prazno
+  ui/                        # Gumb, Polje, Poruka, BrojPolje, Kartica, Cip, OznakaStatusa, Prekidac,
+                             # DonjiList, PraznoStanje, Obavijest, Skeleton (nazivi hrvatski, bez dijakritika)
+  biljeske/                  # NovaBiljeska, ListaBiljeski, PretragaBiljeski, PoljeTeksta
   obloge/                    # OblogaKartica, OdabirObloge (mreža sa slikama), UploadSlike
   predracun/                 # UredivacStavki, Dodaci, Popust, Zbroj (sticky), StatusBadge
   pdf/PredracunPdf.tsx       # @react-pdf dokument
@@ -111,8 +113,9 @@ components/
 lib/
   kalkulacija.ts             # čista funkcija izračuna (dijele je UI, server i PDF)
   kalkulacija.test.ts
-  format.ts                  # formatKM, parseBroj, formatDatum (Europe/Sarajevo)
+  format.ts                  # formatKM, formatM2, parseBroj, formatDatum(Kratko) (Europe/Sarajevo)
   format.test.ts
+  akcije.ts                  # StanjeForme, greskeIzZoda, zBroj, postaviObavijest (za Server Actions)
   slike.ts                   # smanjivanje slike (canvas → WebP) + URL helper
   data/                      # 'server-only' funkcije za čitanje (DAL)
     obloge.ts, predracuni.ts, prodaja.ts, biljeske.ts, postavke.ts
@@ -196,18 +199,27 @@ na svaki zahtjev (osim statike, /prijava, manifest, ikone, sw.js, /api/odrzavanj
 
 ## 7. Tok podataka
 
-**Čitanje (Server Components)**
-- `lib/data/*.ts` (s `import 'server-only'`) kreira klijent preko `createClient(await cookies())` i vraća tipizirane podatke (`utils/supabase/types.ts`).
-- Stranice ih pozivaju unutar `<Suspense>`.
+**Čitanje (Server Components)** — `lib/data/*.ts` (primjer: `lib/data/biljeske.ts`)
+- `import 'server-only'`; funkcija prvo poziva `dohvatiVlasnika()` (provjera prijave, ne oslanja se samo na proxy i RLS), zatim `createClient(await cookies())`.
+- Omotana u React `cache()` (deduplikacija unutar zahtjeva). Bez `'use cache'`, jer podaci ovise o sesiji.
+- Vraća tipove iz `utils/supabase/types.ts` (`Tables<'...'>`, po potrebi `Pick`). Greška upita se **baca**, ne vraća se prazna lista.
+- Stranica je statična ljuska; async podkomponenta koja čita podatke (i `searchParams`) je unutar `<Suspense fallback={…Skeleton}>`.
 
-**Pisanje (Server Actions)**
-1. `zod` validira ulaz. Brojevi dolaze kao tekst i parsiraju se s `parseBroj` (zarez/točka).
-2. Provjera prijave.
+**Pisanje (Server Actions)** — primjer: `app/(app)/biljeske/actions.ts`, pomoćni dijelovi u `lib/akcije.ts`
+1. `await dohvatiVlasnika()`.
+2. `zod` validira ulaz → `greskeIzZoda(error)` vraća `{ greske: { polje: 'poruka' } }`. Brojevi dolaze kao tekst i parsiraju se kroz `zBroj` (`parseBroj`, zarez/točka).
 3. Poziv:
-   - jednostavni CRUD (bilješke, postavke, kategorije, uređivanje obloge) → `supabase.from(...).insert/update`,
+   - jednostavni CRUD (bilješke, postavke, kategorije, uređivanje obloge) → `supabase.from(...).insert/update/delete`,
    - **sve što dira stanje ili predračune** → `supabase.rpc(...)` (vidi [DB.md](DB.md) §5), u jednoj transakciji.
-4. `revalidatePath(...)` pogođenih ruta, a po potrebi `redirect(...)`.
-5. Greške se vraćaju kao `{ greska: 'poruka na hrvatskom' }` i prikazuju u formi.
+   - Greška → `{ greska: 'poruka na hrvatskom' }`.
+4. `revalidatePath(...)` svih pogođenih ruta (npr. bilješke → `/biljeske` i `/`).
+5. Bez redirecta: `return { uspjeh: '…' }`, a klijent prikaže obavijest (`useObavijest()`). S redirectom: `postaviObavijest('…')` pa `redirect(...)` (uvijek zadnji).
+- Tip povrata je `StanjeForme<'polje1' | 'polje2'>`; forme koriste `useActionState`. Ako tekst u polju treba ostati nakon greške, polje je kontrolirano (React 19 resetira formu nakon akcije).
+- Akcije koje se ne zovu iz forme (npr. `promijeniObavljeno(id, obavljeno)`) primaju argumente, ali ih jednako validiraju zodom.
+
+**Obavijesti (toast)**
+- `ObavijestProvider` je u `app/(app)/layout.tsx`; `useObavijest()(tekst, 'uspjeh' | 'greska')`.
+- Za akcije s `redirect()`: `postaviObavijest()` postavlja kratki kolačić `obavijest` (60 s, nije httpOnly), koji provider pročita i obriše pri promjeni rute.
 
 **Izračun na serveru.** Pri spremanju predračuna ili brze prodaje Server Action **ponovno računa** iznose istom funkcijom `lib/kalkulacija.ts`. Vrijednosti s klijenta se ne vjeruju. Izračunati iznosi i snimak cijena šalju se u RPC.
 
@@ -238,10 +250,11 @@ type Ulaz = {
 
 ## 9. Formatiranje i lokalizacija (`lib/format.ts`)
 
-- `formatKM(fen)` → `"1.234,50 KM"`: `Intl.NumberFormat('hr-HR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })` + `" KM"`. Ne koristi se `currency: 'BAM'`, jer hr locale prikazuje „BAM".
-- `parseBroj("12,5")` → `12.5`. Prihvaća zarez i točku i odbacuje razmake.
+- `formatKM(km)` → `"1.234,50 KM"`. Prima iznos **u KM**, kako ga vraća baza (`numeric`); feninzi se koriste samo unutar `kalkulacija.ts`. `Intl.NumberFormat('hr-HR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })` + `" KM"`. Ne koristi se `currency: 'BAM'`, jer hr locale prikazuje „BAM". Negativni iznosi imaju pravi minus (−).
+- `formatM2(m2)` → `"12,5 m²"` (najviše 2 decimale, bez suvišnih nula).
+- `parseBroj("12,5")` → `12.5`. Prihvaća zarez i točku: **zadnji** separator je decimalni, raniji su tisućice (`"1.234,50"` → `1234.5`). Razmaci se odbacuju. Prazno ili neispravno → `null`.
 - Polja za brojeve: `inputMode="decimal"`, za komade `inputMode="numeric"`.
-- Datumi: `Intl.DateTimeFormat('hr-HR', { timeZone: 'Europe/Sarajevo' })`, prikaz `18. 11. 2026.`.
+- Datumi: `formatDatum` → `18. 11. 2026.`, `formatDatumKratko` → `18. 11.`, u zoni `Europe/Sarajevo`. Zapis se slaže ručno iz `formatToParts`, jer `hr-HR` u ICU-u daje vodeće nule (`05. 01.`), a pravopis ih nema (`5. 1. 2026.`).
 - „Ovaj mjesec" i filteri razdoblja računaju se u zoni **Europe/Sarajevo**, i u SQL-u (`at time zone 'Europe/Sarajevo'`) i u UI-u.
 - `<html lang="hr">`, manifest `lang: "hr"`.
 
@@ -394,7 +407,7 @@ function preuzmi(file: File) {
 
 | Što | Kako |
 |---|---|
-| Kalkulacija i formatiranje | `npx vitest run` |
+| Kalkulacija i formatiranje | `npm test` (`vitest run`, konfiguracija `vitest.config.mts`). U Git Bashu pokretati iz `C:/…`, ne `/c/…`: drugačije slovo diska učita vitest dvaput i testovi padnu s „failed to find the current suite" |
 | Kvaliteta koda | `npm run lint` |
 | Build (uključuje Cache Components provjere) | `npm run build` |
 | Baza | Supabase `get_advisors` bez upozorenja |

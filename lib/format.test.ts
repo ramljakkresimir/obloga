@@ -1,0 +1,99 @@
+import { describe, expect, it } from "vitest";
+import { formatDatum, formatDatumKratko, formatKM, formatM2, parseBroj } from "./format";
+
+describe("formatKM", () => {
+  it("formatira tisućice i dvije decimale", () => {
+    expect(formatKM(1234.5)).toBe("1.234,50 KM");
+    expect(formatKM(832.67)).toBe("832,67 KM");
+    expect(formatKM(1245)).toBe("1.245,00 KM");
+    expect(formatKM(1234567.891)).toBe("1.234.567,89 KM");
+  });
+
+  it("nula i negativni", () => {
+    expect(formatKM(0)).toBe("0,00 KM");
+    expect(formatKM(-0)).toBe("0,00 KM");
+    expect(formatKM(-0.001)).toBe("0,00 KM");
+    expect(formatKM(-43.83)).toBe("−43,83 KM");
+  });
+
+  it("zaokružuje na dvije decimale", () => {
+    expect(formatKM(0.125)).toBe("0,13 KM");
+    expect(formatKM(19.999)).toBe("20,00 KM");
+  });
+});
+
+describe("formatM2", () => {
+  it("bez suvišnih nula, najviše dvije decimale", () => {
+    expect(formatM2(12.5)).toBe("12,5 m²");
+    expect(formatM2(12)).toBe("12 m²");
+    expect(formatM2(21.504)).toBe("21,5 m²");
+    expect(formatM2(12.544)).toBe("12,54 m²");
+    expect(formatM2(0.448)).toBe("0,45 m²");
+    expect(formatM2(1250)).toBe("1.250 m²");
+    expect(formatM2(0)).toBe("0 m²");
+  });
+});
+
+describe("parseBroj", () => {
+  it.each([
+    ["12,5", 12.5],
+    ["12.5", 12.5],
+    ["12", 12],
+    [" 3 ", 3],
+    ["1.234,50", 1234.5],
+    ["1,234.5", 1234.5],
+    ["1 234,50", 1234.5],
+    ["1 234,50", 1234.5],
+    ["1.234.567,8", 1234567.8],
+    ["1,2,3", 12.3],
+    ["-4", -4],
+    ["−4,5", -4.5],
+    ["0,5", 0.5],
+    [",5", 0.5],
+    ["5,", 5],
+    ["0", 0],
+  ])("%j → %d", (ulaz, ocekivano) => {
+    expect(parseBroj(ulaz)).toBe(ocekivano);
+  });
+
+  it.each([[""], ["   "], ["abc"], ["12a"], ["1e3"], ["--4"], ["4-"], [","], ["Infinity"]])(
+    "%j → null",
+    (ulaz) => {
+      expect(parseBroj(ulaz)).toBeNull();
+    },
+  );
+
+  it("null i undefined → null", () => {
+    expect(parseBroj(null)).toBeNull();
+    expect(parseBroj(undefined)).toBeNull();
+  });
+});
+
+describe("datumi (Europe/Sarajevo)", () => {
+  it("osnovni prikaz", () => {
+    expect(formatDatum("2026-11-18T10:00:00Z")).toBe("18. 11. 2026.");
+    expect(formatDatum(new Date("2026-01-05T12:00:00Z"))).toBe("5. 1. 2026.");
+    expect(formatDatumKratko("2026-11-18T10:00:00Z")).toBe("18. 11.");
+  });
+
+  it("koristi lokalnu zonu, ne UTC, oko ponoći", () => {
+    // Zimsko vrijeme (UTC+1): 23:30 UTC je već sljedeći dan u Sarajevu.
+    expect(formatDatum("2026-11-17T23:30:00Z")).toBe("18. 11. 2026.");
+    expect(formatDatum("2026-11-17T22:59:00Z")).toBe("17. 11. 2026.");
+    // Ljetno vrijeme (UTC+2): 22:30 UTC je već sljedeći dan.
+    expect(formatDatum("2026-07-14T22:30:00Z")).toBe("15. 7. 2026.");
+    expect(formatDatum("2026-07-14T21:59:00Z")).toBe("14. 7. 2026.");
+  });
+
+  it("prijelaz ljetnog vremena", () => {
+    // 29. 3. 2026. u 01:00 UTC sat ide s 02:00 na 03:00 po lokalnom.
+    expect(formatDatum("2026-03-28T23:30:00Z")).toBe("29. 3. 2026.");
+    // 25. 10. 2026. u 01:00 UTC sat ide s 03:00 na 02:00 po lokalnom.
+    expect(formatDatum("2026-10-25T22:30:00Z")).toBe("25. 10. 2026.");
+    expect(formatDatum("2026-10-25T23:00:00Z")).toBe("26. 10. 2026.");
+  });
+
+  it("prihvaća timestamptz iz Postgresa", () => {
+    expect(formatDatum("2026-11-18 10:00:00+00")).toBe("18. 11. 2026.");
+  });
+});

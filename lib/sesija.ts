@@ -14,6 +14,12 @@ export const opcijeKolacicaAktivnosti = {
   maxAge: SEDAM_DANA,
 };
 
+/**
+ * Kratkotrajni ("flash") kolačić s porukom za obavijest nakon Server Action koja radi redirect().
+ * Postavlja ga postaviObavijest() (lib/akcije.ts), a čita i briše ObavijestProvider u pregledniku.
+ */
+export const KOLACIC_OBAVIJEST = "obavijest";
+
 /** Razlozi zbog kojih je korisnik vraćen na prijavu (?razlog=...). */
 export type RazlogOdjave = "neaktivnost" | "pristup";
 
