@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDatum, formatDatumKratko, formatKM, formatM2, parseBroj } from "./format";
+import { brojSImenicom, formatDatum, formatDatumKratko, formatKM, formatM2, parseBroj } from "./format";
 
 describe("formatKM", () => {
   it("formatira tisućice i dvije decimale", () => {
@@ -95,5 +95,20 @@ describe("datumi (Europe/Sarajevo)", () => {
 
   it("prihvaća timestamptz iz Postgresa", () => {
     expect(formatDatum("2026-11-18 10:00:00+00")).toBe("18. 11. 2026.");
+  });
+});
+
+describe("brojSImenicom", () => {
+  const obloga = ["obloga", "obloge", "obloga"] as const;
+  it("hrvatski oblici", () => {
+    expect(brojSImenicom(0, obloga)).toBe("0 obloga");
+    expect(brojSImenicom(1, obloga)).toBe("1 obloga");
+    expect(brojSImenicom(3, obloga)).toBe("3 obloge");
+    expect(brojSImenicom(5, obloga)).toBe("5 obloga");
+    expect(brojSImenicom(11, obloga)).toBe("11 obloga");
+    expect(brojSImenicom(12, obloga)).toBe("12 obloga");
+    expect(brojSImenicom(21, obloga)).toBe("21 obloga");
+    expect(brojSImenicom(22, obloga)).toBe("22 obloge");
+    expect(brojSImenicom(114, ["komad", "komada", "komada"])).toBe("114 komada");
   });
 });

@@ -65,3 +65,17 @@ export function formatDatumKratko(d: Date | string): string {
   const { dan, mjesec } = dijeloviDatuma(d);
   return `${dan}. ${mjesec}.`;
 }
+
+/**
+ * Broj s imenicom u ispravnom obliku: 1 obloga, 2–4 obloge, 5+ obloga (21 obloga, 22 obloge, 12 obloga).
+ * Oblici: [jednina, 2–4, ostalo], npr. ["obloga", "obloge", "obloga"].
+ */
+export function brojSImenicom(n: number, [jedan, dva, pet]: readonly [string, string, string]): string {
+  const zadnja = n % 10;
+  const zadnjeDvije = n % 100;
+  const oblik =
+    zadnja === 1 && zadnjeDvije !== 11 ? jedan : zadnja >= 2 && zadnja <= 4 && (zadnjeDvije < 12 || zadnjeDvije > 14) ? dva : pet;
+  return `${n} ${oblik}`;
+}
+
+export const OBLIK_OBLOGA = ["obloga", "obloge", "obloga"] as const;

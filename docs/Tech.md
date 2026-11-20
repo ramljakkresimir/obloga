@@ -104,6 +104,7 @@ components/
   ui/                        # Gumb, Polje, Poruka, BrojPolje, Kartica, Cip, OznakaStatusa, Prekidac,
                              # DonjiList, PraznoStanje, Obavijest, Skeleton (nazivi hrvatski, bez dijakritika)
   biljeske/                  # NovaBiljeska, ListaBiljeski, PretragaBiljeski, PoljeTeksta
+  postavke/                  # Kategorije (lista, strelice ↑↓, DonjiList za dodaj/uredi/obriši)
   obloge/                    # OblogaKartica, OdabirObloge (mreža sa slikama), UploadSlike
   predracun/                 # UredivacStavki, Dodaci, Popust, Zbroj (sticky), StatusBadge
   pdf/PredracunPdf.tsx       # @react-pdf dokument
@@ -113,7 +114,7 @@ components/
 lib/
   kalkulacija.ts             # čista funkcija izračuna (dijele je UI, server i PDF)
   kalkulacija.test.ts
-  format.ts                  # formatKM, formatM2, parseBroj, formatDatum(Kratko) (Europe/Sarajevo)
+  format.ts                  # formatKM, formatM2, parseBroj, formatDatum(Kratko) (Europe/Sarajevo), brojSImenicom
   format.test.ts
   akcije.ts                  # StanjeForme, greskeIzZoda, zBroj, postaviObavijest (za Server Actions)
   slike.ts                   # smanjivanje slike (canvas → WebP) + URL helper
@@ -216,6 +217,12 @@ na svaki zahtjev (osim statike, /prijava, manifest, ikone, sw.js, /api/odrzavanj
 5. Bez redirecta: `return { uspjeh: '…' }`, a klijent prikaže obavijest (`useObavijest()`). S redirectom: `postaviObavijest('…')` pa `redirect(...)` (uvijek zadnji).
 - Tip povrata je `StanjeForme<'polje1' | 'polje2'>`; forme koriste `useActionState`. Ako tekst u polju treba ostati nakon greške, polje je kontrolirano (React 19 resetira formu nakon akcije).
 - Akcije koje se ne zovu iz forme (npr. `promijeniObavljeno(id, obavljeno)`) primaju argumente, ali ih jednako validiraju zodom.
+- Velika forma (Postavke: firma + PDV + ljepilo, jedan „Spremi") šalje se kroz `onSubmit` + `startTransition(() => posalji(formData))` umjesto `action={…}`, pa React ne resetira nekontrolirana polja nakon greške.
+
+**Postavke** (`app/(app)/postavke/actions.ts`)
+- `spremiPostavke`: samo naziv firme obavezan; email i JIB (13 znamenki) provjeravaju se samo ako su upisani. Kad firma **nije** u sustavu PDV-a, `cijene_sa_pdv`, `pdv_stopa` i `pdv_broj` se ne provjeravaju i ne upisuju (stare vrijednosti ostaju; u UI-ju su polja samo skrivena).
+- Kategorije se spremaju odmah: `dodajKategoriju` (redoslijed = zadnji + 1), `preimenujKategoriju` (23505 → „već postoji"), `pomakniKategoriju(id, ±1)` (normalizira redoslijed na 1..n), `obrisiKategoriju` (23503 → „Kategorija nije prazna (N obloga)").
+- Zadanu cijenu ljepila (`postavke.ljepilo_cijena`) predračun samo predlaže kad se uključi Ljepilo; u predračunu se može promijeniti i sprema se u `predracuni.ljepilo_cijena`.
 
 **Obavijesti (toast)**
 - `ObavijestProvider` je u `app/(app)/layout.tsx`; `useObavijest()(tekst, 'uspjeh' | 'greska')`.
