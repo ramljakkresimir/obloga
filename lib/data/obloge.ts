@@ -83,6 +83,28 @@ export const dohvatiOblogu = cache(async (id: number): Promise<OblogaDetalji | n
 });
 
 /**
+ * Smije li se obloga trajno obrisati: nikad nije bila u predračunu ni u prodaji.
+ * Samo za prikaz gumba; pravilo uvijek provjerava i RPC obrisi_oblogu.
+ */
+export async function mozeSeObrisati(artiklId: number): Promise<boolean> {
+  await dohvatiVlasnika();
+  const supabase = createClient(await cookies());
+
+  const [stavke, prodaje] = await Promise.all([
+    supabase.from("predracun_stavke").select("id", { count: "exact", head: true }).eq("artikl_id", artiklId),
+    supabase
+      .from("kretanja_stanja")
+      .select("id", { count: "exact", head: true })
+      .eq("artikl_id", artiklId)
+      .in("tip", ["predracun", "brza_prodaja", "storno"]),
+  ]);
+  if (stavke.error || prodaje.error) {
+    throw new Error("Obloga se ne može učitati.", { cause: stavke.error ?? prodaje.error });
+  }
+  return (stavke.count ?? 0) === 0 && (prodaje.count ?? 0) === 0;
+}
+
+/**
  * Povijest kretanja obloge, najnovije prvo, po 50. `prijeId` = id zadnjeg već prikazanog
  * kretanja (keyset: id raste s vremenom upisa).
  */

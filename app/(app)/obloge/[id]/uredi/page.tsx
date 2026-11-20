@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ArrowLeft } from "lucide-react";
-import { dohvatiOblogu, idIzParametra } from "@/lib/data/obloge";
+import { dohvatiOblogu, idIzParametra, mozeSeObrisati } from "@/lib/data/obloge";
 import { dohvatiKategorije } from "@/lib/data/postavke";
 import { FormaObloge } from "@/components/obloge/FormaObloge";
 import { KosturForme } from "@/components/obloge/KosturForme";
@@ -22,7 +22,11 @@ export default function UrediOblogaPage({ params }: PageProps<"/obloge/[id]/ured
 
 async function Forma({ params }: Pick<PageProps<"/obloge/[id]/uredi">, "params">) {
   const id = idIzParametra((await params).id);
-  const [obloga, kategorije] = await Promise.all([dohvatiOblogu(id), dohvatiKategorije()]);
+  const [obloga, kategorije, smijeBrisati] = await Promise.all([
+    dohvatiOblogu(id),
+    dohvatiKategorije(),
+    mozeSeObrisati(id),
+  ]);
   if (!obloga) notFound();
 
   return (
@@ -38,7 +42,12 @@ async function Forma({ params }: Pick<PageProps<"/obloge/[id]/uredi">, "params">
         <h2 className="font-naslov text-2xl leading-8 font-semibold text-espresso">Uredi oblogu</h2>
       </div>
       {/* key: nakon spremanja forma kreće od svježih podataka */}
-      <FormaObloge key={obloga.id} obloga={obloga} kategorije={kategorije.map(({ id, naziv }) => ({ id, naziv }))} />
+      <FormaObloge
+        key={obloga.id}
+        obloga={obloga}
+        mozeSeObrisati={smijeBrisati}
+        kategorije={kategorije.map(({ id, naziv }) => ({ id, naziv }))}
+      />
     </>
   );
 }

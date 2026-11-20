@@ -409,6 +409,7 @@ Zajedničko svim RPC funkcijama koje pišu:
 | `odbij_predracun(p_id bigint)` | `void` | `otvoren` → `odbijen`. |
 | `storniraj_predracun(p_id bigint)` | `void` | Mora biti `status='potvrden'` (oba tipa: predračun i brza prodaja). Postavlja `status='storniran'`, `storniran_at=now()` i upisuje `kretanja (artikl_id, +komada, 'storno', p_id)` po stavci. |
 | `brza_prodaja(p_podaci jsonb)` | `bigint` (id) | Kreira `vrsta='brza_prodaja'`, `status='potvrden'`, `potvrden_at=now()`, bez broja i dodataka, s popustom i PDV snimkom. Upisuje stavke i kretanja `tip='brza_prodaja'`. Sve u jednoj transakciji. |
+| `obrisi_oblogu(p_id bigint)` | `text` (stara `slika`) | Trajno briše oblogu koja **nikad nije prodana**: nema je ni u jednom `predracun_stavke` i nema kretanja osim `ulaz`/`ponistenje` (inače greška „… ne može se obrisati. Možete je arhivirati."). Briše poništenja, pa ulaze (FK `ponistava_id`), pa artikl. Datoteke u Storageu (`artikli/{id}/`) briše Server Action. |
 | `ping()` | `timestamptz` | `select now()`, `stable`, `security invoker`. **Jedina** funkcija dostupna `anon` ulozi. Služi za keepalive (Vercel Cron). |
 
 **Oblik `p_podaci`** (`spremi_predracun`, `brza_prodaja`):
@@ -519,7 +520,7 @@ create policy "vlasnici_select" on public.<tablica>
 | `vlasnici` | ✔ | – | – | – |
 | `postavke` | ✔ | – | ✔ | – |
 | `kategorije` | ✔ | ✔ | ✔ | ✔ (FK blokira ako nije prazna) |
-| `artikli` | ✔ | ✔ (bez `stanje`) | ✔ (bez `stanje`) | – (arhiviranje) |
+| `artikli` | ✔ | ✔ (bez `stanje`) | ✔ (bez `stanje`) | RPC `obrisi_oblogu` (samo nikad prodane; inače arhiviranje) |
 | `kretanja_stanja` | ✔ | RPC | – | – |
 | `brojaci` | – | RPC | RPC | – |
 | `predracuni` | ✔ | RPC | RPC | – |
@@ -598,7 +599,8 @@ select id, 48, 'ulaz', 'Početno stanje', null from a;
 | 6 | `0006_prava_rls` | GRANT/REVOKE iz §6.1, `enable row level security`, politike iz §6.2 |
 | 7 | `0007_storage` | bucket i politike iz §7 |
 | 8 | `0008_pocetni_podaci` | kategorije, postavke |
-| 9 | `0009_obloge` (kasnije) | artikli + početno stanje iz liste vlasnika |
+| 9 | `0009_obrisi_oblogu` | RPC `obrisi_oblogu` + `grant`/`revoke` |
+| 10 | `0010_obloge` (kasnije) | artikli + početno stanje iz liste vlasnika |
 
 Nakon svake: `get_advisors` (security, performance). Na kraju: `generate_typescript_types` → `utils/supabase/types.ts`.
 

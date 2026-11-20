@@ -240,6 +240,34 @@ export async function vratiOblogu(oblogaId: number): Promise<StanjeForme> {
   return { uspjeh: "Obloga je vraćena iz arhive." };
 }
 
+/**
+ * Trajno brisanje obloge koja nikad nije prodana (pravilo provjerava RPC obrisi_oblogu).
+ * Brišu se i njeni ulazi/poništenja te sve datoteke u Storage mapi artikli/{id}/.
+ */
+export async function obrisiOblogu(oblogaId: number): Promise<StanjeForme> {
+  await dohvatiVlasnika();
+
+  const rezultat = id.safeParse(oblogaId);
+  if (!rezultat.success) return { greska: "Neispravan zahtjev." };
+
+  const supabase = createClient(await cookies());
+  const { error } = await supabase.rpc("obrisi_oblogu", { p_id: rezultat.data });
+  // P0001 = poruka iz funkcije („… ne može se obrisati. Možete je arhivirati.").
+  if (error?.code === "P0001") return { greska: error.message };
+  if (error) return { greska: "Obloga nije obrisana. Pokušajte ponovno." };
+
+  // Sve slike te obloge, uključujući zaostatke neuspjelih uploada. Greška ovdje ne vraća brisanje.
+  const mapa = `artikli/${rezultat.data}`;
+  const { data: datoteke } = await supabase.storage.from(BUCKET_SLIKA).list(mapa, { limit: 1000 });
+  if (datoteke?.length) {
+    await supabase.storage.from(BUCKET_SLIKA).remove(datoteke.map((d) => `${mapa}/${d.name}`));
+  }
+
+  osvjezi(rezultat.data);
+  await postaviObavijest("Obloga je trajno obrisana.");
+  redirect("/obloge");
+}
+
 /* ---------------------------------------------------------------------------
  * Stanje: dodaj na stanje (ulaz jedne obloge) i poništi ulaz
  * ------------------------------------------------------------------------- */

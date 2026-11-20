@@ -455,6 +455,7 @@ export type Database = {
     }
     Functions: {
       brza_prodaja: { Args: { p_podaci: Json }; Returns: number }
+      obrisi_oblogu: { Args: { p_id: number }; Returns: string }
       odbij_predracun: { Args: { p_id: number }; Returns: undefined }
       ping: { Args: never; Returns: string }
       ponisti_ulaz: { Args: { p_kretanje_id: number }; Returns: undefined }

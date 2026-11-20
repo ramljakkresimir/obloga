@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Archive, ArchiveRestore } from "lucide-react";
-import { arhivirajOblogu, vratiOblogu } from "@/app/(app)/obloge/actions";
+import { Archive, ArchiveRestore, Trash2 } from "lucide-react";
+import { arhivirajOblogu, obrisiOblogu, vratiOblogu } from "@/app/(app)/obloge/actions";
 import { DonjiList } from "@/components/ui/DonjiList";
 import { Gumb } from "@/components/ui/Gumb";
 import { useObavijest } from "@/components/ui/Obavijest";
@@ -64,5 +64,48 @@ export function VratiIzArhive({ oblogaId, className = "" }: { oblogaId: number; 
       <ArchiveRestore aria-hidden className="size-5" />
       Vrati iz arhive
     </Gumb>
+  );
+}
+
+/** „Obriši trajno" s potvrdom: samo za obloge koje nikad nisu prodane. Akcija preusmjerava na listu. */
+export function ObrisiOblogu({ oblogaId, naziv }: { oblogaId: number; naziv: string }) {
+  const obavijest = useObavijest();
+  const [otvoren, setOtvoren] = useState(false);
+  const [radi, startTransition] = useTransition();
+
+  function obrisi() {
+    startTransition(async () => {
+      const rezultat = await obrisiOblogu(oblogaId);
+      if (rezultat?.greska) {
+        obavijest(rezultat.greska, "greska");
+        setOtvoren(false);
+      }
+    });
+  }
+
+  return (
+    <>
+      <Gumb varijanta="opasni-tekstualni" className="-ml-3 self-start" onClick={() => setOtvoren(true)}>
+        <Trash2 aria-hidden className="size-5" />
+        Obriši trajno
+      </Gumb>
+      <DonjiList otvoren={otvoren} onZatvori={() => setOtvoren(false)} naslov="Trajno obrisati oblogu?">
+        <div className="flex flex-col gap-4">
+          <p>
+            <span className="font-semibold">{naziv}</span>, njena povijest ulaza i slika bit će trajno obrisani.{" "}
+            <span className="font-semibold">Ovo se ne može poništiti.</span>
+          </p>
+          <p className="text-sm text-sivosmeda">Ako je samo više ne prodajete, bolje je arhivirati je.</p>
+          <div className="flex flex-col gap-2">
+            <Gumb varijanta="opasni" punaSirina ucitavanje={radi} onClick={obrisi}>
+              Obriši trajno
+            </Gumb>
+            <Gumb varijanta="tekstualni" punaSirina disabled={radi} onClick={() => setOtvoren(false)}>
+              Odustani
+            </Gumb>
+          </div>
+        </div>
+      </DonjiList>
+    </>
   );
 }

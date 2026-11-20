@@ -15,13 +15,15 @@ import { useObavijest } from "@/components/ui/Obavijest";
 import { Odabir } from "@/components/ui/Odabir";
 import { Polje } from "@/components/ui/Polje";
 import { Poruka } from "@/components/ui/Poruka";
-import { ArhivirajOblogu, VratiIzArhive } from "./ArhivaObloge";
+import { ArhivirajOblogu, ObrisiOblogu, VratiIzArhive } from "./ArhivaObloge";
 import { UploadSlike } from "./UploadSlike";
 
 type Props = {
   kategorije: { id: number; naziv: string }[];
   /** Bez obloge: nova obloga. */
   obloga?: OblogaDetalji;
+  /** Samo kod uređivanja: obloga nikad nije prodana, pa se smije trajno obrisati. */
+  mozeSeObrisati?: boolean;
 };
 
 /** Broj → tekst za polje ("0,448"), bez grupiranja tisućica. */
@@ -49,7 +51,7 @@ async function spremiSliku(oblogaId: number, datoteka: File): Promise<string | n
  * Nova obloga / uredi oblogu. Šalje se kroz onSubmit (ne action={…}), pa polja ostaju nakon greške.
  * Redoslijed: spremi podatke (Server Action vraća id) → upload slike iz preglednika → postaviSliku.
  */
-export function FormaObloge({ kategorije, obloga }: Props) {
+export function FormaObloge({ kategorije, obloga, mozeSeObrisati }: Props) {
   const router = useRouter();
   const obavijest = useObavijest();
 
@@ -253,7 +255,18 @@ export function FormaObloge({ kategorije, obloga }: Props) {
         </div>
       </Kartica>
 
-      {obloga?.aktivan && <ArhivirajOblogu oblogaId={obloga.id} naziv={obloga.naziv} />}
+      {obloga && (
+        <div className="flex flex-col gap-1">
+          {obloga.aktivan && <ArhivirajOblogu oblogaId={obloga.id} naziv={obloga.naziv} />}
+          {mozeSeObrisati ? (
+            <ObrisiOblogu oblogaId={obloga.id} naziv={obloga.naziv} />
+          ) : (
+            <p className="text-sm text-sivosmeda">
+              Ne može se trajno obrisati jer je korištena u predračunu ili prodaji. Možete je arhivirati.
+            </p>
+          )}
+        </div>
+      )}
 
       {stanje?.greska && !stanje.id && <Poruka vrsta="greska">{stanje.greska}</Poruka>}
       {g && <Poruka vrsta="greska">Provjerite označena polja.</Poruka>}

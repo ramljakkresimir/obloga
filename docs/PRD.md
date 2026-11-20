@@ -92,7 +92,8 @@ Početni ekran daje kratak pregled:
   - **cijena po komadu (KM)**,
   - minimalno stanje.
 - Cijena po m² se samo **prikazuje** (cijena/kom ÷ m² po komadu).
-- Obloga koja se više ne prodaje se **arhivira**. Nestaje iz lista i odabira, a ostaje u povijesti i starim predračunima. Ne briše se.
+- Obloga koja se više ne prodaje se **arhivira**. Nestaje iz lista i odabira, a ostaje u povijesti i starim predračunima. Arhivirana obloga se može **vratiti iz arhive**.
+- Obloga koja **nikad nije bila u predračunu ni u prodaji** (npr. unesena greškom ili za test) može se **trajno obrisati**, zajedno sa svojim ulazima i slikom. Sve ostale obloge se samo arhiviraju.
 - Ako obloga nema m² po komadu (npr. pribor), u predračunu se unosi samo u komadima.
 
 **Detalji obloge**
@@ -259,7 +260,7 @@ Nakon **Potvrdi** stanje ove obloge se smanji za **28 kom**. Ljepilo ne utječe 
 ### 6.6 Cijene i povijest
 
 - Cijena obloge se na stavku predračuna **upisuje u trenutku dodavanja**. Kasnija promjena cijene obloge ne mijenja postojeće predračune.
-- Svaka promjena stanja ostaje zapisana u povijesti: tko, kada, koliko i zašto. Povijest se ne može brisati, samo poništiti ulaz.
+- Svaka promjena stanja ostaje zapisana u povijesti: tko, kada, koliko i zašto. Povijest se ne može brisati, samo poništiti ulaz. Iznimka je trajno brisanje nikad prodane obloge (§5.3), koje briše i njezine ulaze.
 
 ### 6.7 Stanje
 
@@ -340,6 +341,7 @@ Ovo **nije** dio prve verzije, ali se može dodati kasnije:
 - [ ] **Skupni ulaz robe**: više obloga odjednom, jedno „Spremi" (23)
 - [ ] **Poništi** pogrešan ulaz iz povijesti (24)
 - [ ] Arhiviranje obloge umjesto brisanja
+- [ ] Trajno brisanje samo nikad prodane obloge (s ulazima i slikom)
 
 ### Predračuni
 - [ ] Podaci kupca upisuju se ručno (ime, telefon, mjesto), bez baze kupaca (15)
