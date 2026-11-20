@@ -6,6 +6,16 @@ const nextConfig: NextConfig = {
     agentFeedback: true,
   },
   cacheComponents: true,
+  images: {
+    // Slike obloga iz Supabase Storagea (javni bucket slike-obloga). Prikazuju se `unoptimized`.
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+        pathname: "/storage/v1/object/public/slike-obloga/**",
+      },
+    ],
+  },
   partialPrefetching: true,
   turbopack: {
     rules: {

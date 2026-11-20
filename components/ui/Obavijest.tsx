@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, Suspense, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { CircleAlert, CircleCheck, X } from "lucide-react";
 import { KOLACIC_OBAVIJEST } from "@/lib/sesija";
@@ -32,15 +32,14 @@ function preuzmiFlash(): { tekst: string; vrsta: Vrsta } | null {
   }
 }
 
-export function ObavijestProvider({ children }: { children: ReactNode }) {
-  const [obavijest, setObavijest] = useState<Stanje | null>(null);
+/**
+ * Poruka iz Server Action koja je završila s redirect(): pokaži je na novoj stranici.
+ * Zaseban list u <Suspense>: usePathname() suspendira na rutama s nepoznatim parametrom
+ * (npr. /obloge/[id]) tijekom prerendera, pa ne smije blokirati cijeli provider.
+ */
+function CitacFlasha({ prikazi }: { prikazi: Prikazi }) {
   const pathname = usePathname();
 
-  const prikazi = useCallback<Prikazi>((tekst, vrsta = "uspjeh") => {
-    setObavijest({ tekst, vrsta, kljuc: Date.now() });
-  }, []);
-
-  // Poruka iz Server Action koja je završila s redirect(): pokaži je na novoj stranici.
   // Kolačić se čita tek u callbacku: u StrictModeu se prvi timeout očisti prije nego ga potroši.
   useEffect(() => {
     const t = setTimeout(() => {
@@ -49,6 +48,16 @@ export function ObavijestProvider({ children }: { children: ReactNode }) {
     }, 0);
     return () => clearTimeout(t);
   }, [pathname, prikazi]);
+
+  return null;
+}
+
+export function ObavijestProvider({ children }: { children: ReactNode }) {
+  const [obavijest, setObavijest] = useState<Stanje | null>(null);
+
+  const prikazi = useCallback<Prikazi>((tekst, vrsta = "uspjeh") => {
+    setObavijest({ tekst, vrsta, kljuc: Date.now() });
+  }, []);
 
   useEffect(() => {
     if (!obavijest) return;
@@ -60,6 +69,9 @@ export function ObavijestProvider({ children }: { children: ReactNode }) {
 
   return (
     <KontekstObavijesti.Provider value={prikazi}>
+      <Suspense fallback={null}>
+        <CitacFlasha prikazi={prikazi} />
+      </Suspense>
       {children}
       <div
         role="status"

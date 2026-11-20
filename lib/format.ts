@@ -25,6 +25,12 @@ export function formatM2(m2: number): string {
   return `${ocisti(fmtM2.format(vrijednost))} m²`;
 }
 
+/** Broj bez jedinice → "0,448", "16", "12,5" (najviše `decimala` decimala, bez suvišnih nula). */
+export function formatBroj(n: number, decimala = 2): string {
+  const fmt = new Intl.NumberFormat("hr-HR", { minimumFractionDigits: 0, maximumFractionDigits: decimala });
+  return ocisti(fmt.format(Math.abs(n) < 10 ** -(decimala + 1) ? 0 : n));
+}
+
 /**
  * Tekst iz polja → broj. Prihvaća zarez i točku: zadnji separator je decimalni,
  * raniji su tisućice ("1.234,50" → 1234.5). Razmaci se odbacuju.

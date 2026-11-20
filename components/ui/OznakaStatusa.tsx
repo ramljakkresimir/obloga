@@ -1,4 +1,7 @@
+import type { VrstaStanja } from "@/lib/obloge";
 import type { Enums } from "@/utils/supabase/types";
+
+export type { VrstaStanja };
 
 export type StatusPredracuna = Enums<"status_predracuna">;
 
@@ -16,8 +19,6 @@ export function OznakaStatusa({ status, className = "" }: { status: StatusPredra
   const { naziv, stil } = statusi[status];
   return <span className={`${oznaka} ${stil} ${className}`}>{naziv}</span>;
 }
-
-export type VrstaStanja = "nisko" | "minus" | "nema";
 
 const stanja: Record<VrstaStanja, { naziv: string; tocka: string; stil: string }> = {
   nisko: { naziv: "Nisko", tocka: "bg-jantar", stil: "bg-[#fdf1dc] text-[#8a5300]" },

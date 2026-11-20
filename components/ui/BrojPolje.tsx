@@ -15,6 +15,9 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "id" | "type" | "inputM
   /** Najmanja vrijednost koju gumb − može postaviti. */
   najmanje?: number;
   defaultValue?: number | string | null;
+  /** Kontrolirani način: tekst polja drži roditelj (npr. m² izračunat iz dimenzija). */
+  vrijednost?: string;
+  onPromjena?: (tekst: string) => void;
   greska?: string;
   pomoc?: string;
 };
@@ -35,6 +38,8 @@ export function BrojPolje({
   koraci,
   najmanje,
   defaultValue,
+  vrijednost,
+  onPromjena,
   greska,
   pomoc,
   className = "",
@@ -43,11 +48,17 @@ export function BrojPolje({
   ...props
 }: Props) {
   const id = useId();
-  const [tekst, setTekst] = useState(() => uTekst(defaultValue));
+  const [interni, setInterni] = useState(() => uTekst(defaultValue));
+  const tekst = vrijednost ?? interni;
   const opisId = greska ? `${id}-greska` : pomoc ? `${id}-pomoc` : undefined;
 
+  function postavi(novi: string) {
+    if (vrijednost === undefined) setInterni(novi);
+    onPromjena?.(novi);
+  }
+
   function promijeni(e: ChangeEvent<HTMLInputElement>) {
-    setTekst(e.target.value);
+    postavi(e.target.value);
     onChange?.(e);
   }
 
@@ -55,7 +66,7 @@ export function BrojPolje({
     const trenutno = parseBroj(tekst) ?? 0;
     let novo = Math.round(trenutno) + smjer;
     if (najmanje !== undefined) novo = Math.max(najmanje, novo);
-    setTekst(String(novo));
+    postavi(String(novo));
   }
 
   const gumbKoraka =
