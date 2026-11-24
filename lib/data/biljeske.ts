@@ -38,3 +38,19 @@ export const dohvatiBiljeske = cache(async (pretraga?: string): Promise<Biljeska
   if (error) throw new Error("Bilješke se ne mogu učitati.", { cause: error });
   return data;
 });
+
+/** Najnovije neobavljene bilješke (Početna, Design §2). */
+export const dohvatiOtvoreneBiljeske = cache(async (limit = 3): Promise<Biljeska[]> => {
+  await dohvatiVlasnika();
+  const supabase = createClient(await cookies());
+
+  const { data, error } = await supabase
+    .from("biljeske")
+    .select("id, tekst, obavljeno, created_at")
+    .eq("obavljeno", false)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw new Error("Bilješke se ne mogu učitati.", { cause: error });
+  return data;
+});

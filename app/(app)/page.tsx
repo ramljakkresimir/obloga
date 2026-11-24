@@ -2,7 +2,10 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
 import { ChevronRight, FileText, PackagePlus, Receipt } from "lucide-react";
+import { OtvoreneBiljeske } from "@/components/biljeske/OtvoreneBiljeske";
+import { Kartica } from "@/components/ui/Kartica";
 import { dohvatiVlasnika } from "@/lib/auth";
+import { dohvatiOtvoreneBiljeske } from "@/lib/data/biljeske";
 import { dohvatiZbrojProdaje } from "@/lib/data/prodaja";
 import { brojSImenicom, formatKM, OBLIK_PRODAJA } from "@/lib/format";
 import { graniceUtc, naslovRazdoblja, razdobljeIzParametara } from "@/lib/razdoblje";
@@ -20,6 +23,44 @@ export default function PocetnaPage() {
       <p className="rounded-[var(--radius-kartica)] border border-rub bg-povrsina p-4 text-sivosmeda shadow-[var(--shadow-kartica)]">
         Pregled otvorenih predračuna i niskog stanja dolazi uskoro.
       </p>
+      <Suspense fallback={<KosturBiljeski />}>
+        <BiljeskePocetna />
+      </Suspense>
+    </div>
+  );
+}
+
+/** Otvorene bilješke (PRD §5.2, Design §2): tri najnovije s kvačicom. */
+async function BiljeskePocetna() {
+  const biljeske = await dohvatiOtvoreneBiljeske(3);
+
+  return (
+    <Kartica
+      naslov="Bilješke"
+      akcija={
+        <Link href="/biljeske" className="font-semibold text-espresso underline underline-offset-4">
+          Sve bilješke
+        </Link>
+      }
+    >
+      <OtvoreneBiljeske biljeske={biljeske} />
+    </Kartica>
+  );
+}
+
+function KosturBiljeski() {
+  return (
+    <div
+      aria-hidden
+      className="flex flex-col gap-4 rounded-[var(--radius-kartica)] border border-rub bg-povrsina p-4 shadow-[var(--shadow-kartica)]"
+    >
+      <div className="h-6 w-24 animate-pulse rounded-lg bg-rub/60" />
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="flex items-center gap-3">
+          <div className="size-6 shrink-0 animate-pulse rounded-full bg-rub/60" />
+          <div className="h-5 flex-1 animate-pulse rounded-lg bg-rub/60" />
+        </div>
+      ))}
     </div>
   );
 }
