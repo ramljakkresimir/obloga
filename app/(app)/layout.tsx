@@ -1,4 +1,5 @@
 import { BocnaTraka, DonjaNavigacija, Zaglavlje } from "@/components/navigacija/Navigacija";
+import { ZastitaIzlaskaProvider } from "@/components/navigacija/ZastitaIzlaska";
 import { ObavijestProvider } from "@/components/ui/Obavijest";
 
 /**
@@ -9,6 +10,7 @@ import { ObavijestProvider } from "@/components/ui/Obavijest";
 export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <ObavijestProvider>
+      <ZastitaIzlaskaProvider>
       <div className="flex flex-1">
         <BocnaTraka />
         <div className="flex min-w-0 flex-1 flex-col">
@@ -19,6 +21,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
           <DonjaNavigacija />
         </div>
       </div>
+      </ZastitaIzlaskaProvider>
     </ObavijestProvider>
   );
 }

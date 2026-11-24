@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, Settings } from "lucide-react";
 import { procitajPovratak } from "@/lib/povratak";
 import { STAVKE_NAVIGACIJE, jeAktivna, naslovZaPutanju, roditeljPutanje } from "./stavke";
+import { useZadrziIzlazak } from "./ZastitaIzlaska";
 
 /** Znak loga (samo „M", bez natpisa): gornji dio punog loga. */
 function ZnakLoga({ sirina = 28 }: { sirina?: number }) {
@@ -43,6 +44,7 @@ function SadrzajZaglavlja({ pathname }: { pathname: string | null }) {
   const naPostavkama = !!pathname?.startsWith("/postavke");
   const natrag = pathname ? roditeljPutanje(pathname) : null;
   const router = useRouter();
+  const zadrzi = useZadrziIzlazak();
 
   return (
     <header className="sticky top-0 z-20 border-b border-rub bg-povrsina pt-[env(safe-area-inset-top)] lg:hidden">
@@ -55,8 +57,11 @@ function SadrzajZaglavlja({ pathname }: { pathname: string | null }) {
               const spremljeno = procitajPovratak(natrag);
               if (spremljeno) {
                 e.preventDefault();
-                router.push(spremljeno);
+                if (!zadrzi(spremljeno)) router.push(spremljeno);
               }
+            }}
+            onNavigate={(e) => {
+              if (zadrzi(natrag)) e.preventDefault();
             }}
             aria-label="Natrag"
             className="-ml-3 flex size-12 items-center justify-center rounded-full text-espresso hover:bg-rub/50"
@@ -64,7 +69,13 @@ function SadrzajZaglavlja({ pathname }: { pathname: string | null }) {
             <ArrowLeft aria-hidden className="size-6" />
           </Link>
         ) : (
-          <Link href="/" aria-label="Početna">
+          <Link
+            href="/"
+            aria-label="Početna"
+            onNavigate={(e) => {
+              if (zadrzi("/")) e.preventDefault();
+            }}
+          >
             <ZnakLoga />
           </Link>
         )}
@@ -74,6 +85,9 @@ function SadrzajZaglavlja({ pathname }: { pathname: string | null }) {
         <Link
           href="/postavke"
           aria-label="Postavke"
+          onNavigate={(e) => {
+            if (zadrzi("/postavke")) e.preventDefault();
+          }}
           aria-current={naPostavkama ? "page" : undefined}
           className={`-mr-2 flex size-12 items-center justify-center rounded-full ${
             naPostavkama ? "text-espresso" : "text-sivosmeda hover:text-espresso"
@@ -88,6 +102,8 @@ function SadrzajZaglavlja({ pathname }: { pathname: string | null }) {
 
 /** Donja navigacija na mobitelu (64 px + sigurna zona). */
 export function DonjaNavigacija() {
+  const zadrzi = useZadrziIzlazak();
+
   return (
     <nav
       aria-label="Glavna navigacija"
@@ -103,6 +119,9 @@ export function DonjaNavigacija() {
                   <Link
                     href={href}
                     aria-current={aktivna ? "page" : undefined}
+                    onNavigate={(e) => {
+                      if (zadrzi(href)) e.preventDefault();
+                    }}
                     className={`flex h-full flex-col items-center justify-center gap-0.5 text-xs font-semibold ${
                       aktivna ? "text-espresso" : "text-sivosmeda"
                     }`}
@@ -129,11 +148,19 @@ export function DonjaNavigacija() {
 /** Bočna traka na računalu (≥ 1024 px). */
 export function BocnaTraka() {
   const stavke = [...STAVKE_NAVIGACIJE, { href: "/postavke", naziv: "Postavke", ikona: Settings }];
+  const zadrzi = useZadrziIzlazak();
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-rub bg-povrsina lg:flex">
       <div className="traka-brenda" aria-hidden />
-      <Link href="/" className="flex items-center gap-3 px-5 py-5" aria-label="Početna">
+      <Link
+        href="/"
+        className="flex items-center gap-3 px-5 py-5"
+        aria-label="Početna"
+        onNavigate={(e) => {
+          if (zadrzi("/")) e.preventDefault();
+        }}
+      >
         <ZnakLoga sirina={36} />
         <span className="font-naslov text-lg font-semibold text-espresso">obloga.ba</span>
       </Link>
@@ -148,6 +175,9 @@ export function BocnaTraka() {
                     <Link
                       href={href}
                       aria-current={aktivna ? "page" : undefined}
+                      onNavigate={(e) => {
+                        if (zadrzi(href)) e.preventDefault();
+                      }}
                       className={`flex min-h-12 items-center gap-3 rounded-[var(--radius-polje)] px-3 font-semibold ${
                         aktivna
                           ? "bg-pijesak-svijetli text-espresso"

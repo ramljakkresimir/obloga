@@ -7,7 +7,7 @@ import { z } from "zod";
 import { dohvatiVlasnika } from "@/lib/auth";
 import { greskeIzZoda, postaviObavijest, type StanjeForme } from "@/lib/akcije";
 import { dohvatiKretanja, type StranicaKretanja } from "@/lib/data/obloge";
-import { parseBroj } from "@/lib/format";
+import { brojSImenicom, formatBroj, OBLIK_OBLOGA, parseBroj } from "@/lib/format";
 import { BUCKET_SLIKA, jePutanjaSlikeObloge, jeStorageSlika } from "@/lib/slike";
 import { createClient } from "@/utils/supabase/server";
 import type { TablesInsert } from "@/utils/supabase/types";
@@ -301,6 +301,51 @@ export async function dodajNaStanje(_prethodno: StanjeUlaza, formData: FormData)
 
   osvjezi(oblogaId);
   return { uspjeh: `Dodano na stanje: +${kolicina} kom.` };
+}
+
+/**
+ * Skupni ulaz robe (/obloge/ulaz): više obloga odjednom, jedna napomena za sve.
+ * Klijent šalje samo stavke s količinom > 0. Svaka stavka postaje zasebno kretanje „ulaz",
+ * pa se u povijesti poništava po oblozi.
+ */
+export async function spremiUlaz(
+  stavke: { artikl_id: number; kolicina: number }[],
+  napomena: string,
+): Promise<StanjeForme> {
+  await dohvatiVlasnika();
+
+  const rezultat = z
+    .object({
+      stavke: z
+        .array(
+          z.object({
+            artikl_id: id,
+            kolicina: z.number().int("Količina mora biti cijeli broj.").min(1, "Količina mora biti veća od 0.").max(1_000_000, "Količina je prevelika."),
+          }),
+        )
+        .min(1, "Upišite količinu barem za jednu oblogu.")
+        .max(500, "Previše stavki u jednom ulazu.")
+        .refine((s) => new Set(s.map((x) => x.artikl_id)).size === s.length, "Ista obloga je upisana dvaput."),
+      napomena: z.string().trim().max(200, "Napomena je preduga (najviše 200 znakova)."),
+    })
+    .safeParse({ stavke, napomena });
+  if (!rezultat.success) return { greska: rezultat.error.issues[0]?.message ?? "Provjerite unesene količine." };
+
+  const supabase = createClient(await cookies());
+  const { error } = await supabase.rpc("ulaz_robe", {
+    p_stavke: rezultat.data.stavke,
+    p_napomena: rezultat.data.napomena,
+  });
+  if (error?.code === "23503") return { greska: "Neka od obloga više ne postoji. Osvježite stranicu." };
+  if (error) return { greska: "Ulaz nije spremljen. Pokušajte ponovno." };
+
+  const ukupno = rezultat.data.stavke.reduce((z, s) => z + s.kolicina, 0);
+  osvjezi();
+  revalidatePath("/obloge/[id]", "page");
+  await postaviObavijest(
+    `Spremljen ulaz: ${brojSImenicom(rezultat.data.stavke.length, OBLIK_OBLOGA)}, +${formatBroj(ukupno, 0)} kom.`,
+  );
+  redirect("/obloge");
 }
 
 export async function ponistiUlaz(kretanjeId: number): Promise<StanjeForme> {

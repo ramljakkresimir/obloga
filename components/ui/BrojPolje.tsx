@@ -6,6 +6,8 @@ import { parseBroj } from "@/lib/format";
 
 type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "id" | "type" | "inputMode" | "defaultValue" | "value"> & {
   oznaka: string;
+  /** Oznaka samo za čitače ekrana (npr. u retku liste gdje je naziv već vidljiv). */
+  skrivenaOznaka?: boolean;
   /** Jedinica kao sufiks unutar polja: "KM", "m²", "kom". */
   jedinica?: string;
   /** Dopušta decimale (tipkovnica s zarezom). Bez toga: samo cijeli brojevi. */
@@ -33,6 +35,7 @@ function uTekst(vrijednost: Props["defaultValue"]): string {
  */
 export function BrojPolje({
   oznaka,
+  skrivenaOznaka,
   jedinica,
   decimalno,
   koraci,
@@ -74,7 +77,10 @@ export function BrojPolje({
 
   return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
-      <label htmlFor={id} className="text-[13px] leading-[18px] font-semibold text-sivosmeda">
+      <label
+        htmlFor={id}
+        className={skrivenaOznaka ? "sr-only" : "text-[13px] leading-[18px] font-semibold text-sivosmeda"}
+      >
         {oznaka}
       </label>
       <div className="flex items-center gap-2">
