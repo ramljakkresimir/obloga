@@ -6,7 +6,18 @@ import { OznakaStanja } from "@/components/ui/OznakaStatusa";
 import { SlikaObloge } from "./SlikaObloge";
 
 /** Kartica obloge u mreži: slika 1:1, naziv (najviše 2 retka), stanje i oznaka u kutu slike. */
-export function OblogaKartica({ obloga, prioritet }: { obloga: Obloga; prioritet?: boolean }) {
+const SIZES_MREZE = "(min-width: 1280px) 220px, (min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw";
+
+export function OblogaKartica({
+  obloga,
+  prioritet,
+  sizes = SIZES_MREZE,
+}: {
+  obloga: Obloga;
+  prioritet?: boolean;
+  /** `sizes` slike; zadano za mrežu na listi obloga. */
+  sizes?: string;
+}) {
   const vrsta = vrstaStanja(obloga.stanje, obloga.min_stanje);
   const m2 = obloga.m2_po_komadu && obloga.stanje > 0 ? obloga.stanje * obloga.m2_po_komadu : null;
 
@@ -21,7 +32,7 @@ export function OblogaKartica({ obloga, prioritet }: { obloga: Obloga; prioritet
         <SlikaObloge
           slika={obloga.slika}
           naziv={obloga.naziv}
-          sizes="(min-width: 1280px) 220px, (min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
+          sizes={sizes}
           priority={prioritet}
         />
         {vrsta && <OznakaStanja vrsta={vrsta} kom={obloga.stanje} className="absolute top-2 left-2 shadow-sm" />}

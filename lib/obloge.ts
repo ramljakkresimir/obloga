@@ -16,6 +16,18 @@ export function vrstaStanja(stanje: number, minStanje: number): VrstaStanja | nu
   return null;
 }
 
+/**
+ * Aktivne obloge s oznakom stanja (minus, 0 kom, nisko) za Početnu:
+ * najmanje stanje prvo, isto stanje abecedno. Ne mijenja ulazni niz.
+ */
+export function oblogeNaNiskomStanju<T extends { aktivan: boolean; stanje: number; min_stanje: number; naziv: string }>(
+  obloge: readonly T[],
+): T[] {
+  return obloge
+    .filter((o) => o.aktivan && vrstaStanja(o.stanje, o.min_stanje) !== null)
+    .sort((a, b) => a.stanje - b.stanje || a.naziv.localeCompare(b.naziv, "hr"));
+}
+
 /** m² po komadu iz dimenzija u cm (0,448 za 16 × 280), na 4 decimale. Bez obje dimenzije → null. */
 export function m2IzDimenzija(sirinaCm: number | null, duzinaCm: number | null): number | null {
   if (!sirinaCm || !duzinaCm || sirinaCm <= 0 || duzinaCm <= 0) return null;

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { cijenaPoM2, inicijali, m2IzDimenzija, normalizirajZaPretragu, vrstaStanja } from "./obloge";
+import {
+  cijenaPoM2,
+  inicijali,
+  m2IzDimenzija,
+  normalizirajZaPretragu,
+  oblogeNaNiskomStanju,
+  vrstaStanja,
+} from "./obloge";
 
 describe("vrstaStanja", () => {
   it("minus kad je stanje negativno", () => {
@@ -21,6 +28,38 @@ describe("vrstaStanja", () => {
   it("bez oznake iznad minimuma", () => {
     expect(vrstaStanja(11, 10)).toBeNull();
     expect(vrstaStanja(48, 0)).toBeNull();
+  });
+});
+
+describe("oblogeNaNiskomStanju", () => {
+  const o = (naziv: string, stanje: number, min_stanje: number, aktivan = true) => ({
+    naziv,
+    stanje,
+    min_stanje,
+    aktivan,
+  });
+
+  it("uzima minus, 0 kom i nisko; izbacuje one iznad minimuma i arhivirane", () => {
+    const rezultat = oblogeNaNiskomStanju([
+      o("Iznad", 11, 10),
+      o("Nisko", 3, 10),
+      o("Nula bez minimuma", 0, 0),
+      o("Minus", -8, 5),
+      o("Arhivirana", -2, 5, false),
+      o("Bez minimuma", 48, 0),
+    ]);
+    expect(rezultat.map((x) => x.naziv)).toEqual(["Minus", "Nula bez minimuma", "Nisko"]);
+  });
+
+  it("najmanje stanje prvo, isto stanje abecedno (hr)", () => {
+    const rezultat = oblogeNaNiskomStanju([o("Žuti", 2, 5), o("Crni", 2, 5), o("Čokolada", 2, 5), o("Bijeli", 0, 5)]);
+    expect(rezultat.map((x) => x.naziv)).toEqual(["Bijeli", "Crni", "Čokolada", "Žuti"]);
+  });
+
+  it("ne mijenja ulazni niz", () => {
+    const ulaz = [o("B", 3, 5), o("A", -1, 5)];
+    oblogeNaNiskomStanju(ulaz);
+    expect(ulaz.map((x) => x.naziv)).toEqual(["B", "A"]);
   });
 });
 

@@ -3,29 +3,145 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { ChevronRight, FileText, PackagePlus, Receipt } from "lucide-react";
 import { OtvoreneBiljeske } from "@/components/biljeske/OtvoreneBiljeske";
+import { OblogaKartica } from "@/components/obloge/OblogaKartica";
 import { Kartica } from "@/components/ui/Kartica";
 import { dohvatiVlasnika } from "@/lib/auth";
 import { dohvatiOtvoreneBiljeske } from "@/lib/data/biljeske";
+import { dohvatiObloge } from "@/lib/data/obloge";
+import { dohvatiOtvorenePredracune } from "@/lib/data/predracuni";
 import { dohvatiZbrojProdaje } from "@/lib/data/prodaja";
-import { brojSImenicom, formatKM, OBLIK_PRODAJA } from "@/lib/format";
+import { brojSImenicom, formatKM, OBLIK_OBLOGA, OBLIK_PREDRACUN, OBLIK_PRODAJA } from "@/lib/format";
+import { oblogeNaNiskomStanju } from "@/lib/obloge";
 import { graniceUtc, naslovRazdoblja, razdobljeIzParametara } from "@/lib/razdoblje";
 
+/** Raspored po Design.md §2. */
 export default function PocetnaPage() {
   return (
     <div className="flex flex-col gap-6">
       <Suspense fallback={<KosturPozdrava />}>
         <Pozdrav />
       </Suspense>
+      <div className="flex flex-col gap-3">
+        <Suspense fallback={<KosturProdajeMjeseca />}>
+          <ProdajaMjeseca />
+        </Suspense>
+        <div className="grid grid-cols-2 gap-3">
+          <Suspense fallback={<KosturMaleKartice />}>
+            <OtvoreniPredracuni />
+          </Suspense>
+          <Suspense fallback={<KosturMaleKartice />}>
+            <NiskoStanjeBroj />
+          </Suspense>
+        </div>
+      </div>
       <BrzeAkcije />
-      <Suspense fallback={<KosturProdajeMjeseca />}>
-        <ProdajaMjeseca />
+      <Suspense fallback={<KosturTrake />}>
+        <NiskoStanjeTraka />
       </Suspense>
-      <p className="rounded-[var(--radius-kartica)] border border-rub bg-povrsina p-4 text-sivosmeda shadow-[var(--shadow-kartica)]">
-        Pregled otvorenih predračuna i niskog stanja dolazi uskoro.
-      </p>
       <Suspense fallback={<KosturBiljeski />}>
         <BiljeskePocetna />
       </Suspense>
+    </div>
+  );
+}
+
+const KLASA_KARTICE =
+  "flex items-center gap-2 rounded-[var(--radius-kartica)] border border-rub bg-povrsina p-4 shadow-[var(--shadow-kartica)]";
+const KLASA_POVEZNICE = `${KLASA_KARTICE} transition-colors hover:bg-pijesak-svijetli`;
+
+/** Otvoreni predračuni (PRD §5.2): broj i vrijednost; klik vodi na listu (zadani filter je „Otvoreni"). */
+async function OtvoreniPredracuni() {
+  const { broj, ukupno } = await dohvatiOtvorenePredracune();
+
+  return (
+    <Link
+      href="/predracuni"
+      aria-label={`Otvoreni predračuni: ${brojSImenicom(broj, OBLIK_PREDRACUN)}, ${formatKM(ukupno)}`}
+      className={KLASA_POVEZNICE}
+    >
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] leading-[18px] font-semibold text-sivosmeda">Otvoreni predračuni</p>
+        <p className="font-naslov text-2xl leading-8 font-semibold text-espresso tabular-nums">{broj}</p>
+        <p className="truncate text-sm text-sivosmeda tabular-nums">{formatKM(ukupno)}</p>
+      </div>
+      <ChevronRight aria-hidden className="size-5 shrink-0 text-sivosmeda" />
+    </Link>
+  );
+}
+
+/** Broj obloga na niskom stanju; klik skrola na traku ispod brzih akcija. */
+async function NiskoStanjeBroj() {
+  const broj = oblogeNaNiskomStanju(await dohvatiObloge()).length;
+
+  const sadrzaj = (
+    <div className="min-w-0 flex-1">
+      <p className="text-[13px] leading-[18px] font-semibold text-sivosmeda">Nisko stanje</p>
+      <p
+        className={`font-naslov text-2xl leading-8 font-semibold tabular-nums ${broj > 0 ? "text-upozorenje" : "text-espresso"}`}
+      >
+        {broj}
+      </p>
+      <p className="truncate text-sm text-sivosmeda">{broj > 0 ? "treba naručiti" : "sve je na stanju"}</p>
+    </div>
+  );
+
+  if (broj === 0) return <div className={KLASA_KARTICE}>{sadrzaj}</div>;
+
+  return (
+    <a
+      href="#nisko-stanje"
+      aria-label={`Nisko stanje: ${brojSImenicom(broj, OBLIK_OBLOGA)}`}
+      className={KLASA_POVEZNICE}
+    >
+      {sadrzaj}
+      <ChevronRight aria-hidden className="size-5 shrink-0 text-sivosmeda" />
+    </a>
+  );
+}
+
+function KosturMaleKartice() {
+  return (
+    <div
+      aria-hidden
+      className="flex flex-col gap-2 rounded-[var(--radius-kartica)] border border-rub bg-povrsina p-4 shadow-[var(--shadow-kartica)]"
+    >
+      <div className="h-4 w-24 animate-pulse rounded-lg bg-rub/60" />
+      <div className="h-8 w-10 animate-pulse rounded-lg bg-rub/60" />
+      <div className="h-4 w-20 animate-pulse rounded-lg bg-rub/60" />
+    </div>
+  );
+}
+
+/** Nisko stanje (Design §2): vodoravno pomične kartice obloga s oznakom. Prazno → ne prikazuje se. */
+async function NiskoStanjeTraka() {
+  const obloge = oblogeNaNiskomStanju(await dohvatiObloge());
+  if (obloge.length === 0) return null;
+
+  return (
+    <section id="nisko-stanje" aria-labelledby="nisko-stanje-naslov" className="flex scroll-mt-20 flex-col gap-3">
+      <h3 id="nisko-stanje-naslov" className="font-naslov text-lg leading-[26px] font-semibold text-espresso">
+        Nisko stanje
+      </h3>
+      <ul className="-mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 lg:mx-0 lg:scroll-px-0 lg:px-0">
+        {obloge.map((o) => (
+          <li key={o.id} className="flex w-36 shrink-0 snap-start">
+            <OblogaKartica obloga={o} sizes="144px" />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function KosturTrake() {
+  return (
+    <div aria-hidden className="flex flex-col gap-3">
+      <div className="h-7 w-32 animate-pulse rounded-lg bg-rub/60" />
+      <div className="flex gap-3 overflow-hidden">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-52 w-36 shrink-0 animate-pulse rounded-[var(--radius-kartica)] bg-rub/60" />
+        ))}
+      </div>
     </div>
   );
 }

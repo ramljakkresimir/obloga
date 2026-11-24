@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { dohvatiVlasnika } from "@/lib/auth";
+import { fenUKm, kmUFen } from "@/lib/kalkulacija";
 import { createClient } from "@/utils/supabase/server";
 import { dohvatiObloge } from "@/lib/data/obloge";
 import { dohvatiKategorije } from "@/lib/data/postavke";
@@ -79,6 +80,36 @@ export async function dohvatiPredracune({
   if (error) throw new Error("Predračuni se ne mogu učitati.", { cause: error });
 
   return { predracuni: data.slice(0, PREDRACUNA_PO_STRANICI), josIma: data.length > PREDRACUNA_PO_STRANICI };
+}
+
+/** PostgREST vraća najviše 1000 redaka po upitu (max rows). */
+const BLOK_ZBROJA = 1000;
+
+export type ZbrojOtvorenih = { broj: number; ukupno: number };
+
+/** Broj i ukupna vrijednost otvorenih predračuna (Početna, PRD §5.2). Zbraja se u feninzima. */
+export async function dohvatiOtvorenePredracune(): Promise<ZbrojOtvorenih> {
+  await dohvatiVlasnika();
+  const supabase = createClient(await cookies());
+
+  let feninga = 0;
+  let broj = 0;
+  for (let pomak = 0; ; pomak += BLOK_ZBROJA) {
+    const { data, error } = await supabase
+      .from("predracuni")
+      .select("ukupno")
+      .eq("vrsta", "predracun")
+      .eq("status", "otvoren")
+      .order("id")
+      .range(pomak, pomak + BLOK_ZBROJA - 1);
+    if (error) throw new Error("Otvoreni predračuni se ne mogu učitati.", { cause: error });
+
+    for (const { ukupno } of data) feninga += kmUFen(ukupno);
+    broj += data.length;
+    if (data.length < BLOK_ZBROJA) break;
+  }
+
+  return { broj, ukupno: fenUKm(feninga) };
 }
 
 export type StavkaDetalja = Pick<
