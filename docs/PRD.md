@@ -366,8 +366,8 @@ Ovo **nije** dio prve verzije, ali se može dodati kasnije:
 - [ ] Lista predračuna s filterom statusa i pretragom
 
 ### PDF
-- [ ] PDF predračun: logo, podaci firme, broj, datum, kupac, stavke, dodaci, popust, PDV, ukupno (16)
-- [ ] Ispravna hrvatska slova (č, ć, đ, š, ž)
+- [x] PDF predračun: logo, podaci firme, broj, datum, kupac, stavke, dodaci, popust, PDV, ukupno (16)
+- [x] Ispravna hrvatska slova (č, ć, đ, š, ž)
 - [ ] **Pošalji** preko Vibera, WhatsAppa ili maila (dijeljenje s mobitela) (14)
 - [ ] **Preuzmi PDF**, i na mobitelu (14)
 

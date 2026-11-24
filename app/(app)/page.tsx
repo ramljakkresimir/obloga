@@ -17,11 +17,17 @@ export default function PocetnaPage() {
   );
 }
 
-/** Tri brze akcije (Design §2). Predračun i brza prodaja su neaktivni dok ti ekrani ne budu gotovi. */
+/** Tri brze akcije (Design §2). Brza prodaja je neaktivna dok taj ekran ne bude gotov. */
 function BrzeAkcije() {
   return (
     <section aria-label="Brze akcije" className="grid grid-cols-3 gap-3">
-      <NeaktivnaAkcija ikona={FileText} naziv="Novi predračun" primarna />
+      <Link
+        href="/predracuni/novi"
+        className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-[var(--radius-kartica)] bg-espresso p-3 text-center font-semibold text-white shadow-[var(--shadow-kartica)] transition-colors hover:bg-smeda"
+      >
+        <FileText aria-hidden className="size-7" />
+        <span className="leading-tight">Novi predračun</span>
+      </Link>
       <NeaktivnaAkcija ikona={Receipt} naziv="Brza prodaja" />
       <Link
         href="/obloge/ulaz"

@@ -21,6 +21,9 @@ export function naslovZaPutanju(pathname: string) {
   if (pathname === "/obloge/ulaz") return "Ulaz robe";
   if (/^\/obloge\/[^/]+\/uredi$/.test(pathname)) return "Uredi oblogu";
   if (/^\/obloge\/[^/]+$/.test(pathname)) return "Obloga";
+  if (pathname === "/predracuni/novi") return "Novi predračun";
+  if (/^\/predracuni\/[^/]+\/uredi$/.test(pathname)) return "Uredi predračun";
+  if (/^\/predracuni\/[^/]+$/.test(pathname)) return "Predračun";
   return STAVKE_NAVIGACIJE.find((s) => jeAktivna(s.href, pathname))?.naziv ?? "Obloga.ba";
 }
 

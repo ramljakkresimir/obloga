@@ -1,0 +1,201 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { ArrowLeft, MapPin, Phone, User } from "lucide-react";
+import { idIzParametra } from "@/lib/data/obloge";
+import { dohvatiPostavke } from "@/lib/data/postavke";
+import { dohvatiPredracun, type PredracunDetalji } from "@/lib/data/predracuni";
+import { formatDatum, formatKM, formatM2 } from "@/lib/format";
+import { modelPdf } from "@/lib/pdf";
+import { iznosiSpremljenog } from "@/lib/predracuni";
+import { SlikaObloge } from "@/components/obloge/SlikaObloge";
+import { AkcijePredracuna } from "@/components/predracun/AkcijePredracuna";
+import { KosturDetalja } from "@/components/predracun/Kosturi";
+import { Razrada } from "@/components/predracun/Razrada";
+import { Kartica } from "@/components/ui/Kartica";
+import { OznakaStatusa } from "@/components/ui/OznakaStatusa";
+
+export const metadata: Metadata = { title: "Predračun" };
+
+export default function PredracunPage({ params }: PageProps<"/predracuni/[id]">) {
+  return (
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+      <Link
+        href="/predracuni"
+        className="hidden min-h-12 items-center gap-2 self-start font-semibold text-sivosmeda hover:text-espresso lg:inline-flex"
+      >
+        <ArrowLeft aria-hidden className="size-5" />
+        Predračuni
+      </Link>
+      <Suspense fallback={<KosturDetalja />}>
+        <Detalji params={params} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function Detalji({ params }: Pick<PageProps<"/predracuni/[id]">, "params">) {
+  const id = idIzParametra((await params).id);
+  const [p, postavke] = await Promise.all([dohvatiPredracun(id), dohvatiPostavke()]);
+  // Brze prodaje imaju svoj prikaz u Prodaji.
+  if (!p || p.vrsta !== "predracun" || !p.broj) notFound();
+
+  const iznosi = iznosiSpremljenog(p);
+
+  return (
+    <>
+      <Zaglavlje p={p} />
+      <Kupac p={p} />
+
+      <Kartica naslov="Obloge">
+        <ul className="-my-3 divide-y divide-rub">
+          {p.stavke.map((s) => (
+            <li key={s.id} className="flex items-start gap-3 py-3">
+              <div className="relative size-12 shrink-0 overflow-hidden rounded-lg border border-rub">
+                <SlikaObloge slika={s.slika} naziv={s.naziv} sizes="48px" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="line-clamp-2 leading-snug font-semibold text-tekst">
+                  {s.aktivan ? (
+                    <Link
+                      href={`/obloge/${s.artikl_id}`}
+                      className="underline decoration-transparent underline-offset-4 hover:decoration-espresso"
+                    >
+                      {s.naziv}
+                    </Link>
+                  ) : (
+                    s.naziv
+                  )}
+                </p>
+                <p className="text-sm text-sivosmeda tabular-nums">
+                  {s.komada} kom{s.unos === "m2" && s.unesena_m2 !== null && <> ({formatM2(s.unesena_m2)})</>} ×{" "}
+                  {formatKM(s.cijena_kom)}
+                </p>
+              </div>
+              <p className="shrink-0 font-naslov font-semibold text-espresso tabular-nums">{formatKM(s.iznos)}</p>
+            </li>
+          ))}
+        </ul>
+      </Kartica>
+
+      {(p.ugradnja_m2 !== null || p.ljepilo_kom !== null || p.prijevoz !== null) && (
+        <Kartica naslov="Dodaci">
+          <dl className="flex flex-col gap-2 tabular-nums">
+            {p.ugradnja_m2 !== null && (
+              <Dodatak
+                naziv="Ugradnja"
+                opis={`${formatM2(p.ugradnja_m2)} × ${formatKM(p.ugradnja_cijena_m2 ?? 0)}/m²`}
+                iznos={iznosi.ugradnja}
+              />
+            )}
+            {p.ljepilo_kom !== null && (
+              <Dodatak
+                naziv="Ljepilo"
+                opis={`${p.ljepilo_kom} kom × ${formatKM(p.ljepilo_cijena ?? 0)}`}
+                iznos={iznosi.ljepilo}
+              />
+            )}
+            {p.prijevoz !== null && <Dodatak naziv="Prijevoz" iznos={iznosi.prijevoz} />}
+          </dl>
+        </Kartica>
+      )}
+
+      <Kartica naslov="Iznos">
+        <Razrada iznosi={iznosi} />
+      </Kartica>
+
+      {p.napomena && (
+        <Kartica naslov="Interna napomena">
+          <p className="whitespace-pre-wrap">{p.napomena}</p>
+        </Kartica>
+      )}
+
+      <AkcijePredracuna
+        id={p.id}
+        broj={p.broj}
+        status={p.status}
+        stavke={p.stavke.map((s) => ({ artiklId: s.artikl_id, naziv: s.naziv, komada: s.komada, stanje: s.stanje }))}
+        pdf={modelPdf(p, postavke)}
+      />
+    </>
+  );
+}
+
+function Zaglavlje({ p }: { p: PredracunDetalji }) {
+  const detalji = [`Napravljen ${formatDatum(p.created_at)}`, p.vlasnik].filter(Boolean).join(" · ");
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h2 className="font-naslov text-2xl leading-8 font-semibold text-espresso tabular-nums">{p.broj}</h2>
+        <OznakaStatusa status={p.status} />
+      </div>
+      <p className="text-sivosmeda">{detalji}</p>
+      {p.potvrden_at && (
+        <p className={p.status === "storniran" ? "text-sivosmeda" : "font-semibold text-uspjeh"}>
+          Potvrđen {formatDatum(p.potvrden_at)}
+        </p>
+      )}
+      {p.storniran_at && <p className="font-semibold text-greska">Storniran {formatDatum(p.storniran_at)}</p>}
+      {p.kopija && (
+        <p className="text-sm text-sivosmeda">
+          Kopija predračuna{" "}
+          <Link href={`/predracuni/${p.kopija.id}`} className="font-semibold text-espresso underline underline-offset-4">
+            {p.kopija.broj}
+          </Link>
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Kupac({ p }: { p: PredracunDetalji }) {
+  if (!p.kupac_ime && !p.kupac_telefon && !p.kupac_mjesto) {
+    return (
+      <Kartica naslov="Kupac">
+        <p className="text-sivosmeda">Kupac nije upisan.</p>
+      </Kartica>
+    );
+  }
+  return (
+    <Kartica naslov="Kupac">
+      <ul className="flex flex-col gap-2">
+        {p.kupac_ime && (
+          <li className="flex items-center gap-3 font-semibold">
+            <User aria-hidden className="size-5 shrink-0 text-drvo" />
+            {p.kupac_ime}
+          </li>
+        )}
+        {p.kupac_telefon && (
+          <li>
+            <a
+              href={`tel:${p.kupac_telefon.replace(/[^\d+]/g, "")}`}
+              className="-my-2 inline-flex min-h-12 items-center gap-3 font-semibold text-espresso underline decoration-rub underline-offset-4 hover:decoration-espresso"
+            >
+              <Phone aria-hidden className="size-5 shrink-0 text-drvo" />
+              {p.kupac_telefon}
+            </a>
+          </li>
+        )}
+        {p.kupac_mjesto && (
+          <li className="flex items-center gap-3">
+            <MapPin aria-hidden className="size-5 shrink-0 text-drvo" />
+            {p.kupac_mjesto}
+          </li>
+        )}
+      </ul>
+    </Kartica>
+  );
+}
+
+function Dodatak({ naziv, opis, iznos }: { naziv: string; opis?: string; iznos: number | null }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <dt>
+        <span className="font-semibold">{naziv}</span>
+        {opis && <span className="block text-sm text-sivosmeda">{opis}</span>}
+      </dt>
+      <dd className="font-naslov font-semibold text-espresso">{iznos === null ? "—" : formatKM(iznos)}</dd>
+    </div>
+  );
+}

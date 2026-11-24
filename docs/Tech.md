@@ -107,12 +107,13 @@ components/
   postavke/                  # Kategorije (lista, strelice ↑↓, DonjiList za dodaj/uredi/obriši)
   obloge/                    # OblogaKartica, OdabirObloge (mreža sa slikama), UploadSlike
   predracun/                 # UredivacStavki, Dodaci, Popust, Zbroj (sticky), StatusBadge
-  pdf/PredracunPdf.tsx       # @react-pdf dokument
+  pdf/PredracunPdf.tsx       # @react-pdf dokument + registracija fontova
   pdf/PdfGumbi.tsx           # Preuzmi / Pošalji (client)
   pwa/RegistracijaSW.tsx     # registracija service workera
   pwa/IosUputa.tsx           # traka „Dodaj na početni zaslon"
 lib/
   kalkulacija.ts             # čista funkcija izračuna (dijele je UI, server i PDF)
+  pdf.ts                     # model PDF-a (retci, sažetak, ime datoteke, tekst poruke) – gradi ga server
   kalkulacija.test.ts
   format.ts                  # formatKM, formatM2, parseBroj, formatDatum(Kratko) (Europe/Sarajevo), brojSImenicom
   format.test.ts
@@ -124,10 +125,10 @@ utils/supabase/
   server.ts, client.ts, middleware.ts   # postojeće
   types.ts                   # generirani tipovi baze (Supabase MCP)
 public/
-  slike/logo/                # logo.png (dostavlja vlasnik)
+  slike/logo/                # logoNoBackground.png (puni logo, za prijavu i PDF)
   slike/obloge/              # početne slike obloga (dostavlja vlasnik)
   ikone/                     # PWA ikone 192/512/maskable, apple-touch-icon
-  fonts/                     # NotoSans-Regular.ttf, NotoSans-Bold.ttf (za PDF)
+  fonts/                     # Poppins-SemiBold/Bold, NunitoSans-Regular/Bold (statični TTF + OFL, za PDF)
   sw.js                      # minimalni service worker
   offline.html               # „Nema internetske veze"
 proxy.ts                     # postojeće + zaštita ruta + 7 dana neaktivnosti
@@ -291,32 +292,20 @@ kmUFen(km) / fenUKm(fen)   // pretvorba na rubu: forma → fen, fen → baza / f
 
 ## 11. PDF predračuna
 
-- `components/pdf/PredracunPdf.tsx`: `@react-pdf/renderer` dokument, A4.
-- **Font**: `Font.register` s `/fonts/NotoSans-Regular.ttf` i `-Bold.ttf`. Ugrađeni PDF fontovi nemaju č, ć, đ, š, ž.
-- **Logo**: `/slike/logo/logo.png`.
-- Podaci: predračun + stavke + dodaci + snimak PDV postavki + podaci firme iz `postavke`. Iznosi su već spremljeni u bazi, a PDF ih samo prikazuje.
-- `PdfGumbi.tsx` (client) generira `Blob` tek na klik, preko dinamičkog `import('@react-pdf/renderer')`:
-
-```ts
-const blob = await pdf(<PredracunPdf … />).toBlob()
-const file = new File([blob], `Predracun-${broj}.pdf`, { type: 'application/pdf' })
-
-// Pošalji
-if (navigator.canShare?.({ files: [file] })) {
-  await navigator.share({ files: [file], title: `Predračun ${broj}` })
-} else {
-  preuzmi(file)
-}
-
-// Preuzmi (i na mobitelu)
-function preuzmi(file: File) {
-  const url = URL.createObjectURL(file)
-  const a = Object.assign(document.createElement('a'), { href: url, download: file.name })
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(url), 10_000)
-}
-```
-
+- `lib/pdf.ts` (čisto, testirano u `lib/pdf.test.ts`): `modelPdf(predracun, firma)` gradi na **serveru** (detalji predračuna) plain objekt s već formatiranim retcima, sažetkom (isti nazivi kao `<Razrada>`), imenom datoteke `Predracun-PR-2026-001.pdf` i tekstom poruke. Iznosi su oni spremljeni u bazi. Interna napomena nije u modelu.
+- PDV broj se prikazuje ako je predračun napravljen u sustavu PDV-a (snimak `pdv_u_sustavu`). Datum je `updated_at` (zadnja izmjena; kod potvrđenog je to datum potvrde).
+- `components/pdf/PredracunPdf.tsx`: `@react-pdf/renderer` dokument, A4, prema Design.md.
+- **Fontovi**: `registrirajFontove(origin)` – `Font.register` za **Poppins** (600/700, naslov i UKUPNO) i **Nunito Sans** (400/700, tekst), statični TTF iz `/fonts/` (react-pdf ne podržava variable fontove). Ugrađeni PDF fontovi nemaju č, ć, đ, š, ž. Isključeno rastavljanje riječi na slogove.
+- **Logo**: `/slike/logo/logoNoBackground.png`. URL-ovi fontova i loga su apsolutni (`location.origin`).
+- Rastavljanje: retci tablice i sažetak se ne lome (`wrap={false}`); podnožje je `fixed`, s „1 / 2" samo kad ima više stranica. Zaglavlje tablice se ne ponavlja na drugoj stranici.
+- `components/pdf/PdfGumbi.tsx` (client): **Pošalji** (primarni) i **Preuzmi PDF** na vrhu akcija za otvoreni i potvrđeni predračun.
+  - `@react-pdf/renderer` i dokument se učitavaju dinamičkim `import()` (predučitavanje na `pointerenter`/`pointerdown`/`focus`), a PDF se generira tek na klik.
+  - Napravljeni `File` se kešira (ključ = model), pa drugi dodir ne generira ponovo.
+  - Pošalji: `navigator.canShare({ files, title, text })` → `navigator.share(...)`. Tekst: „Poštovani, u privitku je predračun PR-…" + naziv firme.
+    - `AbortError` (korisnik zatvorio izbornik) → ništa.
+    - `NotAllowedError` (iOS Safari: korisnikova gesta istekne dok se PDF radi) → obavijest „PDF je spreman – dodirni Pošalji još jednom"; drugi dodir dijeli iz keša.
+    - Bez dijeljenja datoteka (računalo, Firefox) → preuzimanje + obavijest „Dijeljenje nije podržano na ovom uređaju – PDF je preuzet."
+  - Preuzmi: blob URL + `<a download>`, URL se otpušta nakon 60 s.
 - Na iPhoneu u instaliranoj aplikaciji preuzimanje otvara pregled PDF-a, odakle se sprema ili dijeli. To treba provjeriti na stvarnom uređaju.
 
 ## 12. PWA

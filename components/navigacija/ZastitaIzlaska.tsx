@@ -40,7 +40,7 @@ export function ZastitaIzlaskaProvider({ children }: { children: ReactNode }) {
       {children}
       <DonjiList otvoren={cilj !== null} onZatvori={() => setCilj(null)} naslov="Izaći bez spremanja?">
         <div className="flex flex-col gap-4">
-          <p>Upisane količine nisu spremljene i bit će izgubljene.</p>
+          <p>Unesene promjene nisu spremljene i bit će izgubljene.</p>
           <div className="flex flex-col gap-2">
             <Gumb
               varijanta="opasni"

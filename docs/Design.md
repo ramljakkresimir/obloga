@@ -310,8 +310,9 @@ Grupirane kartice:
   - JIB: 4200000000000,
   - PDV broj (samo ako je u sustavu PDV-a).
 - **Naslov**: „PREDRAČUN" (Poppins 700, espresso) i desno „br. **PR-2026-014**" i „Datum: 18. 11. 2026.".
-- **Kupac** (okvir s tankim rubom): Amir H. · 061 123 456 · Sarajevo.
-- **Tablica stavki**: zaglavlje s pijesak pozadinom, retci s tankim razdjelnicima. Stupci: **R. br. · Opis · Količina · Cijena · Iznos**. Primjer:
+- **Boje**: brend samo u logu, traci na vrhu i naslovu „PREDRAČUN". Sav ostali tekst i crte su neutralni (crni / sivi), da dokument izgleda mirno i profesionalno.
+- **Kupac** (okvir s tankim sivim rubom): Amir H. · 061 123 456 · Sarajevo.
+- **Tablica stavki**: zaglavlje sa svijetlosivom pozadinom, retci s tankim sivim razdjelnicima, iznosi nepodebljani. Stupci: **R. br. · Opis · Količina · Cijena · Iznos**. Primjer:
   - 1 · WPC panel 16×280 – Svijetli hrast · 28 kom (12,50 m²) · 22,00 KM · 616,00 KM
   - 2 · Ugradnja · 12,50 m² · 15,00 KM · 187,50 KM
   - 3 · Ljepilo · 4 kom · 12,00 KM · 48,00 KM
@@ -320,7 +321,7 @@ Grupirane kartice:
   - Međuzbroj 876,50 KM,
   - Popust 5 % −43,83 KM,
   - (Osnovica / PDV 17 % ako je u sustavu PDV-a),
-  - traka **UKUPNO ZA PLATITI 832,67 KM** (espresso pozadina, bijeli tekst, Poppins 700).
+  - **UKUPNO ZA PLATITI**: tanka tamna crta iznad, oznaka verzalom, a ispod nje iznos **832,67 KM** (Poppins 700, veći, poravnat desno). Bez pozadine i okvira.
 - **Podnožje**: jedan redak „obloga.ba · +387 63 766 063 · info@obloga.ba".
 - Bez potpisa, pečata, žiro računa i roka važenja. Sve treba ostati na jednoj stranici za tipičan predračun.
 
