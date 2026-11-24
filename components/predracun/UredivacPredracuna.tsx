@@ -4,11 +4,14 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { ArrowLeft, Plus } from "lucide-react";
 import { spremiPredracun } from "@/app/(app)/predracuni/actions";
+import { spremiBrzuProdaju } from "@/app/(app)/prodaja/actions";
+import { formatKM } from "@/lib/format";
 import type { StavkaRezultat } from "@/lib/kalkulacija";
 import {
   iznosiRazrade,
   izracunajPredracun,
   kljucStavke,
+  manjak,
   predlozeniM2,
   procitajUredivac,
   type GreskeUredivaca,
@@ -19,6 +22,7 @@ import {
 } from "@/lib/predracuni";
 import { PoljeTeksta } from "@/components/biljeske/PoljeTeksta";
 import { useZadrziIzlazak, useZastitaIzlaska } from "@/components/navigacija/ZastitaIzlaska";
+import { DonjiList } from "@/components/ui/DonjiList";
 import { Gumb } from "@/components/ui/Gumb";
 import { Kartica } from "@/components/ui/Kartica";
 import { Polje } from "@/components/ui/Polje";
@@ -26,11 +30,20 @@ import { Poruka } from "@/components/ui/Poruka";
 import { Dodaci } from "./Dodaci";
 import { OdabirObloge, type OblogaOdabira } from "./OdabirObloge";
 import { Popust } from "./Popust";
+import { ListaPromjene, UpozorenjeManjka } from "./PromjenaStanja";
 import { StavkaPredracuna } from "./StavkaPredracuna";
 import { SazetakIznosa, TrakaZbroja } from "./TrakaZbroja";
 
+/**
+ * `predracun`: kupac, obloge, dodaci, popust i napomena; Spremi sprema otvoreni predračun.
+ * `brza_prodaja` (PRD §5.6, Design §10): samo obloge, popust i napomena; Potvrdi prodaju
+ * otvara donji list sa skidanjem stanja i upozorenjem o manjku, pa odmah skida stanje.
+ */
+export type NacinUredivaca = "predracun" | "brza_prodaja";
+
 type Props = {
-  /** null = novi predračun. */
+  nacin?: NacinUredivaca;
+  /** null = novi predračun (brza prodaja je uvijek nova). */
   predracunId: number | null;
   /** Broj predračuna koji se uređuje (za naslov). */
   broj?: string | null;
@@ -55,8 +68,10 @@ type Props = {
 /**
  * Uređivač predračuna (PRD §5.5, Design §8): jedna stranica sa sekcijama Kupac, Obloge, Dodaci,
  * Popust i Napomena. Iznosi se računaju uživo (lib/kalkulacija.ts); server ih pri spremanju računa ponovno.
+ * Isti uređivač stavki služi i za brzu prodaju (`nacin="brza_prodaja"`).
  */
 export function UredivacPredracuna({
+  nacin = "predracun",
   predracunId,
   broj,
   kopijaOd = null,
@@ -73,8 +88,10 @@ export function UredivacPredracuna({
   const [fokus, setFokus] = useState<{ artiklId: number } | null>(null);
   const [pokusano, setPokusano] = useState(false);
   const [greska, setGreska] = useState<string | null>(null);
+  const [potvrdaOtvorena, setPotvrdaOtvorena] = useState(false);
   const [sprema, startSpremanja] = useTransition();
   const zadrzi = useZadrziIzlazak();
+  const brzaProdaja = nacin === "brza_prodaja";
 
   const promijenjeno = useMemo(() => JSON.stringify(stanje) !== JSON.stringify(pocetno), [stanje, pocetno]);
   // Kopija još nije spremljena, pa se štiti i bez promjena.
@@ -120,6 +137,16 @@ export function UredivacPredracuna({
   }, [fokus]);
 
   const dodane = useMemo(() => new Set(stanje.stavke.map((s) => s.artiklId)), [stanje.stavke]);
+
+  /** Brza prodaja: komadi koji se skidaju sa stanja (iz izračuna) i manjak prema trenutnom stanju obloga. */
+  const skidanje = useMemo(() => {
+    const stavke = stanje.stavke.flatMap((s) => {
+      const r = izracun.poStavci.get(s.artiklId);
+      return r ? [{ artiklId: s.artiklId, naziv: s.naziv, komada: r.komada }] : [];
+    });
+    const naStanju = new Map(obloge.map((o) => [o.id, o.stanje]));
+    return { stavke, nedostaje: manjak(stavke, naStanju) };
+  }, [stanje.stavke, izracun.poStavci, obloge]);
 
   function promijeni(promjena: Partial<StanjeUredivaca>) {
     setGreska(null);
@@ -173,6 +200,10 @@ export function UredivacPredracuna({
       return;
     }
     setGreska(null);
+    if (brzaProdaja) {
+      setPotvrdaOtvorena(true);
+      return;
+    }
     startSpremanja(async () => {
       // Uspjeh završava redirectom na detalje predračuna s obaviješću.
       const rezultat = await spremiPredracun(predracunId, izracun.podaci, kopijaOd);
@@ -180,8 +211,21 @@ export function UredivacPredracuna({
     });
   }
 
-  const naslov = predracunId ? `Uredi ${broj ?? "predračun"}` : "Novi predračun";
-  const natrag = predracunId ? `/predracuni/${predracunId}` : "/predracuni";
+  function potvrdiProdaju() {
+    startSpremanja(async () => {
+      // Uspjeh završava redirectom na detalje prodaje s obaviješću.
+      const rezultat = await spremiBrzuProdaju(izracun.podaci);
+      if (rezultat?.greska) {
+        setPotvrdaOtvorena(false);
+        setGreska(rezultat.greska);
+      }
+    });
+  }
+
+  const naslov = brzaProdaja ? "Brza prodaja" : predracunId ? `Uredi ${broj ?? "predračun"}` : "Novi predračun";
+  const natrag = brzaProdaja ? "/prodaja" : predracunId ? `/predracuni/${predracunId}` : "/predracuni";
+  const natragNaziv = brzaProdaja ? "Prodaja" : predracunId ? (broj ?? "Predračun") : "Predračuni";
+  const oznakaGumba = brzaProdaja ? "Potvrdi prodaju" : undefined;
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6">
@@ -195,49 +239,53 @@ export function UredivacPredracuna({
             className="inline-flex min-h-12 items-center gap-2 self-start font-semibold text-sivosmeda hover:text-espresso"
           >
             <ArrowLeft aria-hidden className="size-5" />
-            {predracunId ? (broj ?? "Predračun") : "Predračuni"}
+            {natragNaziv}
           </Link>
           <h2 className="font-naslov text-2xl leading-8 font-semibold text-espresso">{naslov}</h2>
         </div>
-        {predracunId && broj && <p className="-mb-1 text-sivosmeda lg:hidden">Broj {broj} ostaje isti.</p>}
+        {!brzaProdaja && predracunId && broj && (
+          <p className="-mb-1 text-sivosmeda lg:hidden">Broj {broj} ostaje isti.</p>
+        )}
 
         {poruka && <Poruka vrsta="info">{poruka}</Poruka>}
 
-        <Kartica naslov="Kupac">
-          <div className="flex flex-col gap-3">
-            <Polje
-              oznaka="Ime i prezime"
-              autoComplete="off"
-              maxLength={120}
-              value={stanje.kupacIme}
-              onChange={(e) => promijeni({ kupacIme: e.target.value })}
-              greska={greskaPolja("kupac_ime", stanje.kupacIme)}
-              disabled={sprema}
-            />
-            <div className="grid gap-3 sm:grid-cols-2">
+        {!brzaProdaja && (
+          <Kartica naslov="Kupac">
+            <div className="flex flex-col gap-3">
               <Polje
-                oznaka="Telefon"
-                type="tel"
-                inputMode="tel"
+                oznaka="Ime i prezime"
                 autoComplete="off"
-                maxLength={40}
-                value={stanje.kupacTelefon}
-                onChange={(e) => promijeni({ kupacTelefon: e.target.value })}
-                greska={greskaPolja("kupac_telefon", stanje.kupacTelefon)}
+                maxLength={120}
+                value={stanje.kupacIme}
+                onChange={(e) => promijeni({ kupacIme: e.target.value })}
+                greska={greskaPolja("kupac_ime", stanje.kupacIme)}
                 disabled={sprema}
               />
-              <Polje
-                oznaka="Mjesto"
-                autoComplete="off"
-                maxLength={80}
-                value={stanje.kupacMjesto}
-                onChange={(e) => promijeni({ kupacMjesto: e.target.value })}
-                greska={greskaPolja("kupac_mjesto", stanje.kupacMjesto)}
-                disabled={sprema}
-              />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Polje
+                  oznaka="Telefon"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="off"
+                  maxLength={40}
+                  value={stanje.kupacTelefon}
+                  onChange={(e) => promijeni({ kupacTelefon: e.target.value })}
+                  greska={greskaPolja("kupac_telefon", stanje.kupacTelefon)}
+                  disabled={sprema}
+                />
+                <Polje
+                  oznaka="Mjesto"
+                  autoComplete="off"
+                  maxLength={80}
+                  value={stanje.kupacMjesto}
+                  onChange={(e) => promijeni({ kupacMjesto: e.target.value })}
+                  greska={greskaPolja("kupac_mjesto", stanje.kupacMjesto)}
+                  disabled={sprema}
+                />
+              </div>
             </div>
-          </div>
-        </Kartica>
+          </Kartica>
+        )}
 
         <Kartica naslov="Obloge">
           {stanje.stavke.length > 0 && (
@@ -271,21 +319,23 @@ export function UredivacPredracuna({
           </Gumb>
         </Kartica>
 
-        <Kartica naslov="Dodaci">
-          <Dodaci
-            dodaci={stanje}
-            onPromjena={promijeni}
-            predlozeniM2={izracun.predlozeni}
-            zadanaCijenaLjepila={zadanaCijenaLjepila}
-            iznosi={{
-              ugradnja: izracun.iznosi?.ugradnja ?? null,
-              ljepilo: izracun.iznosi?.ljepilo ?? null,
-              prijevoz: izracun.iznosi?.prijevoz ?? null,
-            }}
-            greska={greskaPolja}
-            disabled={sprema}
-          />
-        </Kartica>
+        {!brzaProdaja && (
+          <Kartica naslov="Dodaci">
+            <Dodaci
+              dodaci={stanje}
+              onPromjena={promijeni}
+              predlozeniM2={izracun.predlozeni}
+              zadanaCijenaLjepila={zadanaCijenaLjepila}
+              iznosi={{
+                ugradnja: izracun.iznosi?.ugradnja ?? null,
+                ljepilo: izracun.iznosi?.ljepilo ?? null,
+                prijevoz: izracun.iznosi?.prijevoz ?? null,
+              }}
+              greska={greskaPolja}
+              disabled={sprema}
+            />
+          </Kartica>
+        )}
 
         <Kartica naslov="Popust">
           <Popust
@@ -300,9 +350,9 @@ export function UredivacPredracuna({
 
         <Kartica naslov="Napomena">
           <PoljeTeksta
-            oznaka="Interna napomena (ne ide na PDF)"
+            oznaka={brzaProdaja ? "Interna napomena" : "Interna napomena (ne ide na PDF)"}
             maxLength={1000}
-            placeholder="npr. Javiti se u petak"
+            placeholder={brzaProdaja ? "npr. Platio gotovinom" : "npr. Javiti se u petak"}
             value={stanje.napomena}
             onChange={(e) => promijeni({ napomena: e.target.value })}
             greska={greskaPolja("napomena", stanje.napomena)}
@@ -312,10 +362,37 @@ export function UredivacPredracuna({
 
         {greska && <Poruka vrsta="greska">{greska}</Poruka>}
 
-        <TrakaZbroja iznosi={izracun.iznosi} onSpremi={spremi} sprema={sprema} />
+        <TrakaZbroja iznosi={izracun.iznosi} onSpremi={spremi} sprema={sprema} oznakaGumba={oznakaGumba} />
       </div>
 
-      <SazetakIznosa iznosi={izracun.iznosi} onSpremi={spremi} sprema={sprema} />
+      <SazetakIznosa iznosi={izracun.iznosi} onSpremi={spremi} sprema={sprema} oznakaGumba={oznakaGumba} />
+
+      {brzaProdaja && (
+        <DonjiList
+          otvoren={potvrdaOtvorena}
+          onZatvori={() => {
+            if (!sprema) setPotvrdaOtvorena(false);
+          }}
+          naslov="Potvrditi prodaju?"
+        >
+          <div className="flex flex-col gap-4">
+            <p>
+              Prodaja od <span className="font-semibold tabular-nums">{formatKM(izracun.iznosi?.ukupno ?? 0)}</span>. Sa
+              stanja se odmah skida:
+            </p>
+            <ListaPromjene stavke={skidanje.stavke} smjer="skida" />
+            <UpozorenjeManjka nedostaje={skidanje.nedostaje} />
+            <div className="flex flex-col gap-2">
+              <Gumb punaSirina ucitavanje={sprema} onClick={potvrdiProdaju}>
+                {skidanje.nedostaje.length > 0 ? "Svejedno potvrdi" : "Potvrdi"}
+              </Gumb>
+              <Gumb varijanta="tekstualni" punaSirina disabled={sprema} onClick={() => setPotvrdaOtvorena(false)}>
+                Odustani
+              </Gumb>
+            </div>
+          </div>
+        </DonjiList>
+      )}
 
       <OdabirObloge
         otvoren={odabirOtvoren}

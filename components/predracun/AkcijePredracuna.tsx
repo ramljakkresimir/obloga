@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { CircleCheck, Copy, Pencil, TriangleAlert, Undo2, X } from "lucide-react";
+import { CircleCheck, Copy, Pencil, Undo2, X } from "lucide-react";
 import { odbijPredracun, potvrdiPredracun, stornirajPredracun } from "@/app/(app)/predracuni/actions";
 import type { StanjeForme } from "@/lib/akcije";
 import type { PredracunPdf } from "@/lib/pdf";
@@ -12,6 +12,7 @@ import { DonjiList } from "@/components/ui/DonjiList";
 import { Gumb } from "@/components/ui/Gumb";
 import { GumbPoveznica } from "@/components/ui/GumbPoveznica";
 import { useObavijest } from "@/components/ui/Obavijest";
+import { ListaPromjene, UpozorenjeManjka } from "./PromjenaStanja";
 
 type Stavka = { artiklId: number; naziv: string; komada: number; stanje: number };
 
@@ -95,30 +96,8 @@ export function AkcijePredracuna({ id, broj, status, stavke, pdf }: Props) {
           <p>
             Kupac je prihvatio predračun <span className="font-semibold">{broj}</span>. Sa stanja se skida:
           </p>
-          <ul className="flex flex-col gap-1 tabular-nums">
-            {stavke.map((s) => (
-              <li key={s.artiklId} className="flex justify-between gap-3">
-                <span className="min-w-0">{s.naziv}</span>
-                <span className="shrink-0 font-semibold text-greska">−{s.komada} kom</span>
-              </li>
-            ))}
-          </ul>
-          {nedostaje.length > 0 && (
-            <div role="alert" className="flex flex-col gap-2 rounded-[var(--radius-polje)] bg-greska-pozadina px-4 py-3 text-greska">
-              <p className="flex items-center gap-2 font-semibold">
-                <TriangleAlert aria-hidden className="size-5 shrink-0" />
-                Nema dovoljno na stanju
-              </p>
-              <ul className="flex flex-col gap-1 text-sm tabular-nums">
-                {nedostaje.map((m) => (
-                  <li key={m.artiklId}>
-                    {m.naziv} – treba {m.treba}, ima {m.ima}, <span className="font-semibold">nedostaje {m.nedostaje} kom</span>
-                  </li>
-                ))}
-              </ul>
-              <p className="text-sm">Stanje će otići u minus.</p>
-            </div>
-          )}
+          <ListaPromjene stavke={stavke} smjer="skida" />
+          <UpozorenjeManjka nedostaje={nedostaje} />
           <div className="flex flex-col gap-2">
             <Gumb punaSirina ucitavanje={radi} onClick={() => izvrsi(potvrdiPredracun)}>
               {nedostaje.length > 0 ? "Svejedno potvrdi" : "Potvrdi"}
@@ -154,14 +133,7 @@ export function AkcijePredracuna({ id, broj, status, stavke, pdf }: Props) {
           <p>
             Potvrda predračuna <span className="font-semibold">{broj}</span> se poništava, a roba se vraća na stanje:
           </p>
-          <ul className="flex flex-col gap-1 tabular-nums">
-            {stavke.map((s) => (
-              <li key={s.artiklId} className="flex justify-between gap-3">
-                <span className="min-w-0">{s.naziv}</span>
-                <span className="shrink-0 font-semibold text-uspjeh">+{s.komada} kom</span>
-              </li>
-            ))}
-          </ul>
+          <ListaPromjene stavke={stavke} smjer="vraca" />
           <p className="text-sm text-sivosmeda">
             Stornirani predračun se ne može ponovno potvrditi. Za ispravak ga kopirajte.
           </p>

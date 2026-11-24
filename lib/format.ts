@@ -85,3 +85,4 @@ export function brojSImenicom(n: number, [jedan, dva, pet]: readonly [string, st
 }
 
 export const OBLIK_OBLOGA = ["obloga", "obloge", "obloga"] as const;
+export const OBLIK_PRODAJA = ["prodaja", "prodaje", "prodaja"] as const;

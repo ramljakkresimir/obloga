@@ -107,14 +107,18 @@ export function PovijestKretanja({ artiklId, pocetno }: Props) {
 
 function opis(k: Kretanje): { naslov: string; href?: string } {
   const broj = k.predracun?.broj;
-  const href = k.predracun && k.predracun.vrsta === "predracun" ? `/predracuni/${k.predracun.id}` : undefined;
+  const href = k.predracun
+    ? k.predracun.vrsta === "predracun"
+      ? `/predracuni/${k.predracun.id}`
+      : `/prodaja/${k.predracun.id}`
+    : undefined;
   switch (k.tip) {
     case "ulaz":
       return { naslov: "Ulaz robe" };
     case "predracun":
       return { naslov: broj ? `Predračun ${broj}` : "Predračun", href };
     case "brza_prodaja":
-      return { naslov: "Brza prodaja" };
+      return { naslov: "Brza prodaja", href };
     case "storno":
       return { naslov: broj ? `Storno ${broj}` : "Storno brze prodaje", href };
     case "ponistenje":

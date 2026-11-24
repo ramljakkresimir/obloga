@@ -267,6 +267,83 @@ describe("Uredi i Kopiraj", () => {
   });
 });
 
+describe("Brza prodaja (isti uređivač stavki)", () => {
+  const prodaja: SpremljeniPredracun = {
+    kupac_ime: null,
+    kupac_telefon: null,
+    kupac_mjesto: null,
+    napomena: "Platio gotovinom",
+    ugradnja_m2: null,
+    ugradnja_cijena_m2: null,
+    ljepilo_kom: null,
+    ljepilo_cijena: null,
+    prijevoz: null,
+    popust_tip: "posto",
+    popust_vrijednost: 10,
+    stavke: [
+      { artikl_id: 7, naziv: "WPC hrast", cijena_kom: 20, m2_po_komadu: 0.448, unos: "kom", unesena_m2: null, komada: 3, slika: null },
+      { artikl_id: 9, naziv: "Arhivirani", cijena_kom: 5, m2_po_komadu: null, unos: "kom", unesena_m2: null, komada: 1, slika: null },
+    ],
+  };
+  const obloge = new Map([
+    [7, { id: 7, naziv: "WPC hrast", slika: null, cijena_kom: 22, m2_po_komadu: 0.448, aktivan: true }],
+    [9, { id: 9, naziv: "Arhivirani", slika: null, cijena_kom: 5, m2_po_komadu: null, aktivan: false }],
+  ]);
+
+  it("Kopiraj: bez dodataka, popust ostaje, napomena prazna, trenutne cijene, arhivirane preskočene", () => {
+    const { stanje, preskocene } = uredivacIzKopije(prodaja, obloge);
+    expect(preskocene).toEqual(["Arhivirani"]);
+    expect(stanje.napomena).toBe("");
+    expect(stanje.kupacIme).toBe("");
+    expect(stanje.ugradnja.ukljucena).toBe(false);
+    expect(stanje.ljepilo.ukljuceno).toBe(false);
+    expect(stanje.prijevoz.ukljucen).toBe(false);
+    expect(stanje.popust).toEqual({ tip: "posto", vrijednost: "10" });
+    expect(stanje.stavke).toEqual([
+      { artiklId: 7, naziv: "WPC hrast", slika: null, cijenaKom: 22, m2PoKomadu: 0.448, unos: "kom", kolicina: "3" },
+    ]);
+  });
+
+  it("podaciZaRpc: 3 kom × 22,00 − 10 % = 59,40, bez kupca i dodataka", () => {
+    const s: StanjeUredivaca = { ...uredivacIzKopije(prodaja, obloge).stanje, napomena: "  Gotovina " };
+    const snimak = snimakIz(s);
+    const { podaci, greske } = procitajUredivac(s, predlozeniM2(s));
+    expect(greske).toEqual({});
+    const { rezultat } = izracunajPredracun(podaci, snimak, BEZ_PDV);
+    expect(podaciZaRpc(podaci, snimak, BEZ_PDV, rezultat, null)).toMatchObject({
+      kupac_ime: "",
+      napomena: "Gotovina",
+      ugradnja_m2: null,
+      ugradnja_cijena_m2: null,
+      ljepilo_kom: null,
+      ljepilo_cijena: null,
+      prijevoz: null,
+      popust_tip: "posto",
+      popust_vrijednost: 10,
+      medjuzbroj: 66,
+      popust_iznos: 6.6,
+      osnovica: 59.4,
+      ukupno: 59.4,
+      kopija_od: null,
+      stavke: [{ artikl_id: 7, unos: "kom", unesena_m2: null, komada: 3, cijena_kom: 22, iznos: 66 }],
+    });
+  });
+
+  it("manjak iz komada izračuna (m² zaokruženo naviše) i trenutnog stanja", () => {
+    const s: StanjeUredivaca = {
+      ...prazanUredivac(),
+      stavke: [WPC, { ...WPC, artiklId: 8, naziv: "PVC mramor", m2PoKomadu: null, unos: "kom", kolicina: "2" }],
+    };
+    const { podaci } = procitajUredivac(s, 0);
+    const { rezultat } = izracunajPredracun(podaci, snimakIz(s), BEZ_PDV);
+    const stavke = s.stavke.map((st, i) => ({ artiklId: st.artiklId, naziv: st.naziv, komada: rezultat.stavke[i].komada }));
+    expect(stavke.map((x) => x.komada)).toEqual([28, 2]);
+    expect(manjak(stavke, new Map([[7, 30], [8, -1]]))).toEqual([
+      { artiklId: 8, naziv: "PVC mramor", treba: 2, ima: -1, nedostaje: 2 },
+    ]);
+  });
+});
+
 describe("iznosiSpremljenog", () => {
   it("PRD §6.4: dodaci iz kalkulacije, zbrojevi iz baze", () => {
     const r = iznosiSpremljenog({

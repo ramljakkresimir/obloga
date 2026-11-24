@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { brojSImenicom, formatDatum, formatDatumKratko, formatKM, formatM2, parseBroj } from "./format";
+import { brojSImenicom, formatDatum, formatDatumKratko, formatKM, formatM2, OBLIK_PRODAJA, parseBroj } from "./format";
 
 describe("formatKM", () => {
   it("formatira tisućice i dvije decimale", () => {
@@ -110,5 +110,11 @@ describe("brojSImenicom", () => {
     expect(brojSImenicom(21, obloga)).toBe("21 obloga");
     expect(brojSImenicom(22, obloga)).toBe("22 obloge");
     expect(brojSImenicom(114, ["komad", "komada", "komada"])).toBe("114 komada");
+  });
+
+  it("prodaje", () => {
+    expect(brojSImenicom(1, OBLIK_PRODAJA)).toBe("1 prodaja");
+    expect(brojSImenicom(3, OBLIK_PRODAJA)).toBe("3 prodaje");
+    expect(brojSImenicom(12, OBLIK_PRODAJA)).toBe("12 prodaja");
   });
 });

@@ -9,10 +9,10 @@ import { dohvatiPredracun, type PredracunDetalji } from "@/lib/data/predracuni";
 import { formatDatum, formatKM, formatM2 } from "@/lib/format";
 import { modelPdf } from "@/lib/pdf";
 import { iznosiSpremljenog } from "@/lib/predracuni";
-import { SlikaObloge } from "@/components/obloge/SlikaObloge";
 import { AkcijePredracuna } from "@/components/predracun/AkcijePredracuna";
 import { KosturDetalja } from "@/components/predracun/Kosturi";
 import { Razrada } from "@/components/predracun/Razrada";
+import { StavkeDetalja } from "@/components/predracun/StavkeDetalja";
 import { Kartica } from "@/components/ui/Kartica";
 import { OznakaStatusa } from "@/components/ui/OznakaStatusa";
 
@@ -49,34 +49,7 @@ async function Detalji({ params }: Pick<PageProps<"/predracuni/[id]">, "params">
       <Kupac p={p} />
 
       <Kartica naslov="Obloge">
-        <ul className="-my-3 divide-y divide-rub">
-          {p.stavke.map((s) => (
-            <li key={s.id} className="flex items-start gap-3 py-3">
-              <div className="relative size-12 shrink-0 overflow-hidden rounded-lg border border-rub">
-                <SlikaObloge slika={s.slika} naziv={s.naziv} sizes="48px" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="line-clamp-2 leading-snug font-semibold text-tekst">
-                  {s.aktivan ? (
-                    <Link
-                      href={`/obloge/${s.artikl_id}`}
-                      className="underline decoration-transparent underline-offset-4 hover:decoration-espresso"
-                    >
-                      {s.naziv}
-                    </Link>
-                  ) : (
-                    s.naziv
-                  )}
-                </p>
-                <p className="text-sm text-sivosmeda tabular-nums">
-                  {s.komada} kom{s.unos === "m2" && s.unesena_m2 !== null && <> ({formatM2(s.unesena_m2)})</>} ×{" "}
-                  {formatKM(s.cijena_kom)}
-                </p>
-              </div>
-              <p className="shrink-0 font-naslov font-semibold text-espresso tabular-nums">{formatKM(s.iznos)}</p>
-            </li>
-          ))}
-        </ul>
+        <StavkeDetalja stavke={p.stavke} />
       </Kartica>
 
       {(p.ugradnja_m2 !== null || p.ljepilo_kom !== null || p.prijevoz !== null) && (

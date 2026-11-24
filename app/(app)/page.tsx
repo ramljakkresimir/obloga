@@ -1,7 +1,11 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { FileText, PackagePlus, Receipt, type LucideIcon } from "lucide-react";
+import { connection } from "next/server";
+import { ChevronRight, FileText, PackagePlus, Receipt } from "lucide-react";
 import { dohvatiVlasnika } from "@/lib/auth";
+import { dohvatiZbrojProdaje } from "@/lib/data/prodaja";
+import { brojSImenicom, formatKM, OBLIK_PRODAJA } from "@/lib/format";
+import { graniceUtc, naslovRazdoblja, razdobljeIzParametara } from "@/lib/razdoblje";
 
 export default function PocetnaPage() {
   return (
@@ -10,14 +14,51 @@ export default function PocetnaPage() {
         <Pozdrav />
       </Suspense>
       <BrzeAkcije />
+      <Suspense fallback={<KosturProdajeMjeseca />}>
+        <ProdajaMjeseca />
+      </Suspense>
       <p className="rounded-[var(--radius-kartica)] border border-rub bg-povrsina p-4 text-sivosmeda shadow-[var(--shadow-kartica)]">
-        Pregled prodaje, otvorenih predračuna i niskog stanja dolazi uskoro.
+        Pregled otvorenih predračuna i niskog stanja dolazi uskoro.
       </p>
     </div>
   );
 }
 
-/** Tri brze akcije (Design §2). Brza prodaja je neaktivna dok taj ekran ne bude gotov. */
+/** Prodaja ovaj mjesec (PRD §5.1): zbroj potvrđenih, poveznica na pregled prodaje. */
+async function ProdajaMjeseca() {
+  await connection(); // new Date() tek u vrijeme zahtjeva
+  const razdoblje = razdobljeIzParametara({}, new Date());
+  const { ukupno, broj } = await dohvatiZbrojProdaje(graniceUtc(razdoblje));
+
+  return (
+    <Link
+      href="/prodaja"
+      className="flex items-center gap-3 rounded-[var(--radius-kartica)] border border-rub bg-povrsina p-4 shadow-[var(--shadow-kartica)] transition-colors hover:bg-pijesak-svijetli"
+    >
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] leading-[18px] font-semibold text-sivosmeda">Prodaja · {naslovRazdoblja(razdoblje)}</p>
+        <p className="font-naslov text-2xl leading-8 font-semibold text-espresso tabular-nums">{formatKM(ukupno)}</p>
+        <p className="text-sm text-sivosmeda tabular-nums">{brojSImenicom(broj, OBLIK_PRODAJA)}</p>
+      </div>
+      <ChevronRight aria-hidden className="size-6 shrink-0 text-sivosmeda" />
+    </Link>
+  );
+}
+
+function KosturProdajeMjeseca() {
+  return (
+    <div
+      aria-hidden
+      className="flex flex-col gap-2 rounded-[var(--radius-kartica)] border border-rub bg-povrsina p-4 shadow-[var(--shadow-kartica)]"
+    >
+      <div className="h-4 w-36 animate-pulse rounded-lg bg-rub/60" />
+      <div className="h-8 w-44 animate-pulse rounded-lg bg-rub/60" />
+      <div className="h-4 w-20 animate-pulse rounded-lg bg-rub/60" />
+    </div>
+  );
+}
+
+/** Tri brze akcije (Design §2): Novi predračun, Brza prodaja, Ulaz robe. */
 function BrzeAkcije() {
   return (
     <section aria-label="Brze akcije" className="grid grid-cols-3 gap-3">
@@ -28,7 +69,13 @@ function BrzeAkcije() {
         <FileText aria-hidden className="size-7" />
         <span className="leading-tight">Novi predračun</span>
       </Link>
-      <NeaktivnaAkcija ikona={Receipt} naziv="Brza prodaja" />
+      <Link
+        href="/prodaja/nova"
+        className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-[var(--radius-kartica)] border border-rub bg-povrsina p-3 text-center font-semibold text-espresso shadow-[var(--shadow-kartica)] transition-colors hover:bg-pijesak-svijetli"
+      >
+        <Receipt aria-hidden className="size-7" />
+        <span className="leading-tight">Brza prodaja</span>
+      </Link>
       <Link
         href="/obloge/ulaz"
         className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-[var(--radius-kartica)] border border-rub bg-povrsina p-3 text-center font-semibold text-espresso shadow-[var(--shadow-kartica)] transition-colors hover:bg-pijesak-svijetli"
@@ -37,21 +84,6 @@ function BrzeAkcije() {
         <span className="leading-tight">Ulaz robe</span>
       </Link>
     </section>
-  );
-}
-
-function NeaktivnaAkcija({ ikona: Ikona, naziv, primarna }: { ikona: LucideIcon; naziv: string; primarna?: boolean }) {
-  return (
-    <div
-      aria-disabled="true"
-      className={`flex min-h-24 cursor-not-allowed flex-col items-center justify-center gap-2 rounded-[var(--radius-kartica)] p-3 text-center font-semibold opacity-60 ${
-        primarna ? "bg-espresso text-white" : "border border-rub bg-povrsina text-espresso"
-      }`}
-    >
-      <Ikona aria-hidden className="size-7" />
-      <span className="leading-tight">{naziv}</span>
-      <span className="text-xs font-normal">uskoro</span>
-    </div>
   );
 }
 
