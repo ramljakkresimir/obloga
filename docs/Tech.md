@@ -236,24 +236,31 @@ na svaki zahtjev (osim statike, /prijava, manifest, ikone, sw.js, /api/odrzavanj
 
 ```ts
 type StavkaUlaz = { cijenaKomFen: number; m2PoKomadu: number | null; unos: 'm2' | 'kom'; kolicina: number }
-type Ulaz = {
-  stavke: StavkaUlaz[]
-  ugradnja?: { m2: number; cijenaM2Fen: number }   // undefined = isključeno
+type UlazKalkulacije = {
+  stavke: StavkaUlaz[]                               // smije biti prazno
+  ugradnja?: { m2: number; cijenaM2Fen: number }     // undefined = isključeno; m² do 2 decimale
   ljepilo?:  { kom: number; cijenaFen: number }
   prijevozFen?: number
-  popust?: { tip: 'posto' | 'km'; vrijednost: number }
+  popust?: { tip: 'posto' | 'km'; vrijednost: number } // posto 0–100; km u KM (kao popust_vrijednost u bazi)
   pdv: { uSustavu: boolean; cijeneSaPdv: boolean; stopa: number } // stopa 17
 }
-// → { stavke: [{ komada, m2, iznosFen }], dodaciFen, medjuzbrojFen, popustFen,
-//     osnovicaFen, pdvFen, ukupnoFen, predlozeniM2Ugradnje }
+izracunaj(ulaz) → {
+  stavke: [{ komada, m2, iznosFen }], stavkeFen,
+  ugradnjaFen, ljepiloFen, prijevozFen, dodaciFen,
+  medjuzbrojFen, popustFen, popustOgranicen, nakonPopustaFen,
+  osnovicaFen, pdvFen, ukupnoFen, predlozeniM2Ugradnje
+}
+kmUFen(km) / fenUKm(fen)   // pretvorba na rubu: forma → fen, fen → baza / formatKM
 ```
 
-- **Računa se u feninzima (cijeli brojevi)** da nema grešaka s decimalama (`0.1 + 0.2`). Zaokruživanje je standardno, pola naviše.
-- `komada = Math.ceil(m2 / m2PoKomadu - 1e-9)`. Epsilon štiti od slučajeva poput 12,544 / 0,448 = 28,000000001.
-- Predloženi m² za ugradnju = zbroj upisanih m², a za stavke u komadima `komada × m2PoKomadu`.
-- Popust u KM ograničen je na međuzbroj. Popust u % se računa od međuzbroja.
-- PDV (stopa 17): vidi [PRD.md](PRD.md) §6.3.
-- Testovi (`kalkulacija.test.ts`) pokrivaju **izračunat primjer iz PRD §6.4** (28 kom, 876,50 → 832,67, sva tri PDV načina), unos u komadima, artikl bez m², popust veći od iznosa, granične decimale i isključene dodatke.
+- **Računa se u feninzima (cijeli brojevi)** da nema grešaka s decimalama (`0.1 + 0.2`). Svako dijeljenje je cjelobrojno sa standardnim zaokruživanjem (pola naviše).
+- **Komadi bez epsilona**: m² i m²/kom se pretvore u desettisućinke (`× 10 000`), pa `komada = ⌈a / b⌉` cjelobrojno. 12,544 / 0,448 = točno 28.
+- Stavka `m2`: za unos u m² upisana vrijednost, za unos u komadima `komada × m2PoKomadu` (samo prikaz), a za oblogu bez m² `null`.
+- Predloženi m² za ugradnju = zbroj upisanih m² i `komada × m2PoKomadu` za stavke u komadima (stavke bez m² daju 0), **zaokruženo na 2 decimale** (`ugradnja_m2` je `numeric(10,2)`).
+- Popust u % se računa od međuzbroja. Popust (u % ili KM) veći od međuzbroja se ograniči na međuzbroj i vrati `popustOgranicen: true`, da UI može upozoriti.
+- PDV (stopa 17): vidi [PRD.md](PRD.md) §6.3. Ista tri načina vrijede i za **brzu prodaju** (snimak trenutnih postavki).
+- **Neispravan ulaz baca `Error`** (NaN, količina ≤ 0, komadi ili feninzi koji nisu cijeli broj, negativni iznosi, popust > 100 %, unos u m² za oblogu bez m²/kom). Forma i zod to sprječavaju ranije, a kalkulacija je zadnja zaštita.
+- Testovi (`kalkulacija.test.ts`) pokrivaju **izračunat primjer iz PRD §6.4** (28 kom, 876,50 → 832,67, sva tri PDV načina), komade (točan višekratnik, naviše, unos u komadima, obloga bez m²), predloženi m², popust (%, KM, ograničen), isključene dodatke, prazne stavke, granične decimale i neispravan ulaz.
 
 ## 9. Formatiranje i lokalizacija (`lib/format.ts`)
 
