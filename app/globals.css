@@ -46,6 +46,12 @@
     outline-offset: 2px;
   }
 
+  /* Edge/IE dodaju svoj gumb za prikaz lozinke i "x" za brisanje; Polje već ima svoje oko. */
+  input::-ms-reveal,
+  input::-ms-clear {
+    display: none;
+  }
+
   /* Dok je otvoren modalni <dialog> (DonjiList), stranica ispod se ne pomiče. */
   html:has(dialog[open]:modal) {
     overflow: hidden;
