@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   iznosiSpremljenog,
   izracunajPredracun,
+  jeIspravanDatum,
   manjak,
   podaciZaRpc,
   prazanUredivac,
@@ -124,6 +125,63 @@ describe("procitajUredivac + izracunajPredracun", () => {
   });
 });
 
+describe("uvjeti predračuna (idu na PDF)", () => {
+  const sa = (izmjene: Partial<StanjeUredivaca>) => {
+    const s = { ...primjer(), ...izmjene };
+    return procitajUredivac(s, predlozeniM2(s));
+  };
+
+  it("novi predračun: gotovinsko, 15 dana, bez datuma isporuke", () => {
+    const { podaci, greske } = sa({});
+    expect(greske.vrijedi_dana).toBeUndefined();
+    expect(podaci).toMatchObject({ nacinPlacanja: "gotovinsko", vrijediDana: 15, datumIsporuke: null, svrha: "" });
+  });
+
+  it("obrezuje tekst i čita datum i rok", () => {
+    const { podaci, greske } = sa({
+      kupacAdresa: "  Glavna 12 ",
+      kupacJib: " 4200000000000 ",
+      svrha: " Kuhinja ",
+      nacinPlacanja: " virman ",
+      datumIsporuke: "2026-12-01",
+      vrijediDana: "30",
+    });
+    expect(greske).toEqual({});
+    expect(podaci).toMatchObject({
+      kupacAdresa: "Glavna 12",
+      kupacJib: "4200000000000",
+      svrha: "Kuhinja",
+      nacinPlacanja: "virman",
+      datumIsporuke: "2026-12-01",
+      vrijediDana: 30,
+    });
+  });
+
+  it("prazan rok = bez roka; neispravan rok je greška", () => {
+    expect(sa({ vrijediDana: "" }).podaci.vrijediDana).toBeNull();
+    expect(sa({ vrijediDana: "0" }).greske.vrijedi_dana).toBe("Upišite broj veći od 0.");
+    expect(sa({ vrijediDana: "7,5" }).greske.vrijedi_dana).toBe("Upišite cijeli broj.");
+    expect(sa({ vrijediDana: "400" }).greske.vrijedi_dana).toBe("Najviše 365 dana.");
+  });
+
+  it("nepostojeći datum isporuke je greška i ne šalje se", () => {
+    const { podaci, greske } = sa({ datumIsporuke: "2026-02-30" });
+    expect(greske.datum_isporuke).toBe("Upišite ispravan datum.");
+    expect(podaci.datumIsporuke).toBeNull();
+  });
+
+  it("predugi tekst je greška", () => {
+    expect(sa({ svrha: "x".repeat(201) }).greske.svrha).toBe("Najviše 200 znakova.");
+    expect(sa({ kupacJib: "1".repeat(21) }).greske.kupac_jib).toBe("Najviše 20 znakova.");
+  });
+
+  it("jeIspravanDatum", () => {
+    expect(jeIspravanDatum("2028-02-29")).toBe(true);
+    expect(jeIspravanDatum("2026-02-29")).toBe(false);
+    expect(jeIspravanDatum("1.12.2026")).toBe(false);
+  });
+});
+
 describe("podaciZaRpc", () => {
   it("PRD §6.4, cijene bez PDV-a: iznosi u KM i snimak stavke", () => {
     const s = primjer();
@@ -135,6 +193,12 @@ describe("podaciZaRpc", () => {
       kupac_ime: "Amir H.",
       kupac_telefon: "",
       kupac_mjesto: "",
+      kupac_adresa: "",
+      kupac_jib: "",
+      svrha: "",
+      nacin_placanja: "gotovinsko",
+      datum_isporuke: null,
+      vrijedi_dana: 15,
       napomena: "",
       ugradnja_m2: 12.5,
       ugradnja_cijena_m2: 15,
@@ -212,6 +276,12 @@ describe("Uredi i Kopiraj", () => {
     kupac_ime: "Amir H.",
     kupac_telefon: "061 123 456",
     kupac_mjesto: "Sarajevo",
+    kupac_adresa: "Glavna 12",
+    kupac_jib: "4200000000000",
+    svrha: "Dnevni boravak",
+    nacin_placanja: "virman",
+    datum_isporuke: "2026-12-01",
+    vrijedi_dana: 30,
     napomena: "Javiti se u petak",
     ugradnja_m2: 12.5,
     ugradnja_cijena_m2: 15,
@@ -237,6 +307,30 @@ describe("Uredi i Kopiraj", () => {
     expect(s.ugradnja).toEqual({ ukljucena: true, m2: "12,5", rucno: true, cijenaM2: "15" });
     expect(s.prijevoz).toEqual({ ukljucen: true, iznos: "1250,5" });
     expect(s.popust).toEqual({ tip: "km", vrijednost: "40" });
+    expect(s).toMatchObject({
+      kupacAdresa: "Glavna 12",
+      kupacJib: "4200000000000",
+      svrha: "Dnevni boravak",
+      nacinPlacanja: "virman",
+      datumIsporuke: "2026-12-01",
+      vrijediDana: "30",
+    });
+  });
+
+  it("uredivacIzKopije: način plaćanja i rok ostaju, podaci vezani uz kupca se brišu", () => {
+    const obloge = new Map([[7, { id: 7, naziv: "WPC hrast", slika: null, cijena_kom: 22, m2_po_komadu: 0.448, aktivan: true }]]);
+    const { stanje } = uredivacIzKopije(spremljeni, obloge);
+    expect(stanje).toMatchObject({
+      kupacAdresa: "",
+      kupacJib: "",
+      svrha: "",
+      datumIsporuke: "",
+      nacinPlacanja: "virman",
+      vrijediDana: "30",
+    });
+    // Stari predračun bez uvjeta: kopija dobiva zadane vrijednosti.
+    const stari = uredivacIzKopije({ ...spremljeni, nacin_placanja: null, vrijedi_dana: null }, obloge).stanje;
+    expect(stari).toMatchObject({ nacinPlacanja: "gotovinsko", vrijediDana: "15" });
   });
 
   it("uredivacIzKopije: trenutne cijene, prazan kupac, arhivirane preskočene", () => {
@@ -272,6 +366,12 @@ describe("Brza prodaja (isti uređivač stavki)", () => {
     kupac_ime: null,
     kupac_telefon: null,
     kupac_mjesto: null,
+    kupac_adresa: null,
+    kupac_jib: null,
+    svrha: null,
+    nacin_placanja: null,
+    datum_isporuke: null,
+    vrijedi_dana: null,
     napomena: "Platio gotovinom",
     ugradnja_m2: null,
     ugradnja_cijena_m2: null,
@@ -350,6 +450,12 @@ describe("iznosiSpremljenog", () => {
       kupac_ime: null,
       kupac_telefon: null,
       kupac_mjesto: null,
+      kupac_adresa: null,
+      kupac_jib: null,
+      svrha: null,
+      nacin_placanja: null,
+      datum_isporuke: null,
+      vrijedi_dana: null,
       napomena: null,
       ugradnja_m2: 12.5,
       ugradnja_cijena_m2: 15,

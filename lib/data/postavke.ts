@@ -21,7 +21,7 @@ export const dohvatiPostavke = cache(async (): Promise<Postavke> => {
 
   const { data, error } = await supabase
     .from("postavke")
-    .select("naziv_firme, adresa, mjesto, telefon, email, jib, pdv_broj, u_sustavu_pdv, cijene_sa_pdv, pdv_stopa, ljepilo_cijena")
+    .select("naziv_firme, adresa, mjesto, telefon, email, jib, vlasnik, banka, transakcijski_racun, web, instagram, whatsapp, viber, pdv_broj, u_sustavu_pdv, cijene_sa_pdv, pdv_stopa, ljepilo_cijena")
     .eq("id", 1)
     .single();
   if (error) throw new Error("Postavke se ne mogu učitati.", { cause: error });

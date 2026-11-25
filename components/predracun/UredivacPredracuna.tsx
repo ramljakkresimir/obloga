@@ -8,6 +8,7 @@ import { spremiBrzuProdaju } from "@/app/(app)/prodaja/actions";
 import { formatKM } from "@/lib/format";
 import type { StavkaRezultat } from "@/lib/kalkulacija";
 import {
+  DUZINA,
   iznosiRazrade,
   izracunajPredracun,
   kljucStavke,
@@ -298,6 +299,27 @@ export function UredivacPredracuna({
                   disabled={sprema}
                 />
               </div>
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                <Polje
+                  oznaka="Adresa"
+                  autoComplete="off"
+                  maxLength={DUZINA.kupacAdresa}
+                  value={stanje.kupacAdresa}
+                  onChange={(e) => promijeni({ kupacAdresa: e.target.value })}
+                  greska={greskaPolja("kupac_adresa", stanje.kupacAdresa)}
+                  disabled={sprema}
+                />
+                <Polje
+                  oznaka="JIB"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={DUZINA.kupacJib}
+                  value={stanje.kupacJib}
+                  onChange={(e) => promijeni({ kupacJib: e.target.value })}
+                  greska={greskaPolja("kupac_jib", stanje.kupacJib)}
+                  disabled={sprema}
+                />
+              </div>
             </div>
           </Kartica>
         )}
@@ -363,6 +385,55 @@ export function UredivacPredracuna({
             disabled={sprema}
           />
         </Kartica>
+
+        {!brzaProdaja && (
+          <Kartica naslov="Uvjeti">
+            <div className="flex flex-col gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Polje
+                  oznaka="Način plaćanja"
+                  autoComplete="off"
+                  maxLength={DUZINA.nacinPlacanja}
+                  placeholder="npr. gotovinsko"
+                  value={stanje.nacinPlacanja}
+                  onChange={(e) => promijeni({ nacinPlacanja: e.target.value })}
+                  greska={greskaPolja("nacin_placanja", stanje.nacinPlacanja)}
+                  disabled={sprema}
+                />
+                <Polje
+                  oznaka="Vrijedi (dana)"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={3}
+                  value={stanje.vrijediDana}
+                  onChange={(e) => promijeni({ vrijediDana: e.target.value })}
+                  greska={greskaPolja("vrijedi_dana", stanje.vrijediDana)}
+                  disabled={sprema}
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Polje
+                  oznaka="Datum isporuke"
+                  type="date"
+                  value={stanje.datumIsporuke}
+                  onChange={(e) => promijeni({ datumIsporuke: e.target.value })}
+                  greska={greskaPolja("datum_isporuke", stanje.datumIsporuke)}
+                  disabled={sprema}
+                />
+                <Polje
+                  oznaka="Svrha"
+                  autoComplete="off"
+                  maxLength={DUZINA.svrha}
+                  value={stanje.svrha}
+                  onChange={(e) => promijeni({ svrha: e.target.value })}
+                  greska={greskaPolja("svrha", stanje.svrha)}
+                  disabled={sprema}
+                />
+              </div>
+              <p className="text-sm text-sivosmeda">Ide na PDF. Prazna polja ostaju prazna na PDF-u.</p>
+            </div>
+          </Kartica>
+        )}
 
         <Kartica naslov="Napomena">
           <PoljeTeksta

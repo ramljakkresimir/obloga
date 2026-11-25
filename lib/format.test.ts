@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { brojSImenicom, formatDatum, formatDatumKratko, formatKM, formatM2, OBLIK_PRODAJA, parseBroj } from "./format";
+import { brojSImenicom, formatDatum, formatDatumKratko, formatDatumPdf, formatKM, formatM2, OBLIK_DAN, OBLIK_PRODAJA, parseBroj } from "./format";
 
 describe("formatKM", () => {
   it("formatira tisućice i dvije decimale", () => {
@@ -74,6 +74,19 @@ describe("datumi (Europe/Sarajevo)", () => {
     expect(formatDatum("2026-11-18T10:00:00Z")).toBe("18. 11. 2026.");
     expect(formatDatum(new Date("2026-01-05T12:00:00Z"))).toBe("5. 1. 2026.");
     expect(formatDatumKratko("2026-11-18T10:00:00Z")).toBe("18. 11.");
+  });
+
+  it("PDF predračuna: vodeće nule, bez razmaka (kao Excel predložak)", () => {
+    expect(formatDatumPdf("2026-10-08T10:00:00Z")).toBe("08.10.2026.");
+    expect(formatDatumPdf("2026-11-17T23:30:00Z")).toBe("18.11.2026.");
+    // Datum bez vremena (datum_isporuke) ostaje isti dan.
+    expect(formatDatumPdf("2026-12-01")).toBe("01.12.2026.");
+  });
+
+  it("dani", () => {
+    expect(brojSImenicom(1, OBLIK_DAN)).toBe("1 dan");
+    expect(brojSImenicom(15, OBLIK_DAN)).toBe("15 dana");
+    expect(brojSImenicom(21, OBLIK_DAN)).toBe("21 dan");
   });
 
   it("koristi lokalnu zonu, ne UTC, oko ponoći", () => {

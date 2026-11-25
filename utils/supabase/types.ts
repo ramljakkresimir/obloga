@@ -212,9 +212,11 @@ export type Database = {
       postavke: {
         Row: {
           adresa: string | null
+          banka: string | null
           cijene_sa_pdv: boolean
           email: string | null
           id: number
+          instagram: string | null
           jib: string | null
           ljepilo_cijena: number
           mjesto: string | null
@@ -222,14 +224,21 @@ export type Database = {
           pdv_broj: string | null
           pdv_stopa: number
           telefon: string | null
+          transakcijski_racun: string | null
           u_sustavu_pdv: boolean
           updated_at: string
+          viber: string | null
+          vlasnik: string | null
+          web: string | null
+          whatsapp: string | null
         }
         Insert: {
           adresa?: string | null
+          banka?: string | null
           cijene_sa_pdv?: boolean
           email?: string | null
           id?: number
+          instagram?: string | null
           jib?: string | null
           ljepilo_cijena?: number
           mjesto?: string | null
@@ -237,14 +246,21 @@ export type Database = {
           pdv_broj?: string | null
           pdv_stopa?: number
           telefon?: string | null
+          transakcijski_racun?: string | null
           u_sustavu_pdv?: boolean
           updated_at?: string
+          viber?: string | null
+          vlasnik?: string | null
+          web?: string | null
+          whatsapp?: string | null
         }
         Update: {
           adresa?: string | null
+          banka?: string | null
           cijene_sa_pdv?: boolean
           email?: string | null
           id?: number
+          instagram?: string | null
           jib?: string | null
           ljepilo_cijena?: number
           mjesto?: string | null
@@ -252,8 +268,13 @@ export type Database = {
           pdv_broj?: string | null
           pdv_stopa?: number
           telefon?: string | null
+          transakcijski_racun?: string | null
           u_sustavu_pdv?: boolean
           updated_at?: string
+          viber?: string | null
+          vlasnik?: string | null
+          web?: string | null
+          whatsapp?: string | null
         }
         Relationships: []
       }
@@ -319,15 +340,19 @@ export type Database = {
           broj: string | null
           created_at: string
           created_by: string | null
+          datum_isporuke: string | null
           godina: number | null
           id: number
           kopija_od: number | null
+          kupac_adresa: string | null
           kupac_ime: string | null
+          kupac_jib: string | null
           kupac_mjesto: string | null
           kupac_telefon: string | null
           ljepilo_cijena: number | null
           ljepilo_kom: number | null
           medjuzbroj: number
+          nacin_placanja: string | null
           napomena: string | null
           osnovica: number
           pdv_cijene_sa_pdv: boolean
@@ -342,25 +367,31 @@ export type Database = {
           redni_broj: number | null
           status: Database["public"]["Enums"]["status_predracuna"]
           storniran_at: string | null
+          svrha: string | null
           ugradnja_cijena_m2: number | null
           ugradnja_m2: number | null
           ukupno: number
           updated_at: string
+          vrijedi_dana: number | null
           vrsta: Database["public"]["Enums"]["vrsta_prodaje"]
         }
         Insert: {
           broj?: string | null
           created_at?: string
           created_by?: string | null
+          datum_isporuke?: string | null
           godina?: number | null
           id?: never
           kopija_od?: number | null
+          kupac_adresa?: string | null
           kupac_ime?: string | null
+          kupac_jib?: string | null
           kupac_mjesto?: string | null
           kupac_telefon?: string | null
           ljepilo_cijena?: number | null
           ljepilo_kom?: number | null
           medjuzbroj: number
+          nacin_placanja?: string | null
           napomena?: string | null
           osnovica: number
           pdv_cijene_sa_pdv: boolean
@@ -375,25 +406,31 @@ export type Database = {
           redni_broj?: number | null
           status?: Database["public"]["Enums"]["status_predracuna"]
           storniran_at?: string | null
+          svrha?: string | null
           ugradnja_cijena_m2?: number | null
           ugradnja_m2?: number | null
           ukupno: number
           updated_at?: string
+          vrijedi_dana?: number | null
           vrsta?: Database["public"]["Enums"]["vrsta_prodaje"]
         }
         Update: {
           broj?: string | null
           created_at?: string
           created_by?: string | null
+          datum_isporuke?: string | null
           godina?: number | null
           id?: never
           kopija_od?: number | null
+          kupac_adresa?: string | null
           kupac_ime?: string | null
+          kupac_jib?: string | null
           kupac_mjesto?: string | null
           kupac_telefon?: string | null
           ljepilo_cijena?: number | null
           ljepilo_kom?: number | null
           medjuzbroj?: number
+          nacin_placanja?: string | null
           napomena?: string | null
           osnovica?: number
           pdv_cijene_sa_pdv?: boolean
@@ -408,10 +445,12 @@ export type Database = {
           redni_broj?: number | null
           status?: Database["public"]["Enums"]["status_predracuna"]
           storniran_at?: string | null
+          svrha?: string | null
           ugradnja_cijena_m2?: number | null
           ugradnja_m2?: number | null
           ukupno?: number
           updated_at?: string
+          vrijedi_dana?: number | null
           vrsta?: Database["public"]["Enums"]["vrsta_prodaje"]
         }
         Relationships: [

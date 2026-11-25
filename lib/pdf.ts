@@ -1,15 +1,37 @@
-// Model PDF predračuna (PRD §5.5, Design.md › PDF predračun). Čiste funkcije bez Reacta:
-// server gradi model, a preglednik ga samo iscrtava (components/pdf/PredracunPdf.tsx).
+// Model PDF predračuna (PRD §5.5, Design.md › PDF predračun) po Excel predlošku „Predračun Obloga.ba.xlsx”.
+// Čiste funkcije bez Reacta: server gradi model, a preglednik ga samo iscrtava (components/pdf/PredracunPdf.tsx).
 
-import { formatBroj, formatDatum, formatKM, formatM2 } from "./format";
+import { fenUKm, kmUFen } from "./kalkulacija";
+import { brojSImenicom, formatBroj, formatDatumPdf, formatKM, formatM2, OBLIK_DAN } from "./format";
 import { iznosiSpremljenog, type SpremljeniPredracun } from "./predracuni";
 import type { Tables } from "@/utils/supabase/types";
 
-/** Puni logo za zaglavlje PDF-a (public/). */
-export const LOGO_PDF = "/slike/logo/logoNoBackground.png";
+/** Slike iz Excel predloška (public/slike/pdf). */
+export const SLIKE_PDF = {
+  logo: "/slike/pdf/logo.png",
+  web: "/slike/pdf/web.png",
+  instagram: "/slike/pdf/instagram.png",
+  whatsapp: "/slike/pdf/whatsapp.png",
+  viber: "/slike/pdf/viber.png",
+} as const;
 
-/** Podaci firme iz postavki koji idu na PDF. */
-export type FirmaPdf = Pick<Tables<"postavke">, "naziv_firme" | "adresa" | "mjesto" | "telefon" | "email" | "jib" | "pdv_broj">;
+/** Podaci firme iz postavki koji idu na PDF (email namjerno nije: nema ga u predlošku). */
+export type FirmaPdf = Pick<
+  Tables<"postavke">,
+  | "naziv_firme"
+  | "vlasnik"
+  | "adresa"
+  | "mjesto"
+  | "telefon"
+  | "jib"
+  | "pdv_broj"
+  | "banka"
+  | "transakcijski_racun"
+  | "web"
+  | "instagram"
+  | "whatsapp"
+  | "viber"
+>;
 
 /** Spremljeni predračun s poljima koja PDF treba (podskup PredracunDetalji). */
 export type PredracunZaPdf = Omit<SpremljeniPredracun, "stavke"> &
@@ -27,37 +49,67 @@ export type PredracunZaPdf = Omit<SpremljeniPredracun, "stavke"> &
     | "ukupno"
   > & { stavke: (SpremljeniPredracun["stavke"][number] & { iznos: number })[] };
 
-export type RedakPdf = { rb: number; opis: string; kolicina: string; cijena: string; iznos: string };
-export type RedSazetka = { naziv: string; iznos: string; istaknuto?: boolean };
+export type VrstaKontakta = "web" | "instagram" | "whatsapp" | "viber";
+export type KontaktPdf = { vrsta: VrstaKontakta; tekst: string };
+
+/** Redak glavne tablice: Red. Br. | Naziv artikla | Količina/kom | Cijena/ kom | Popust % | Vrijednost. */
+export type RedakPdf = { rb: string; naziv: string; kolicina: string; cijena: string; popust: string; iznos: string };
+/** Tablica „Ugradnja:” (m2 | Cijena/ m2 | iznos). */
+export type UgradnjaPdf = { rb: string; naziv: string; m2: string; cijenaM2: string; iznos: string };
+export type RedZbroja = { naziv: string; iznos: string };
 
 /** Sve što PDF prikazuje, već formatirano (plain objekt, prolazi server → client). */
 export type PredracunPdf = {
   broj: string;
   datum: string;
+  /** "15 dana"; prazno = nije upisano. */
+  vrijedi: string;
   imeDatoteke: string;
   tekstPoruke: string;
-  firma: { naziv: string; retci: string[] };
-  /** Upisani podaci kupca (ime, telefon, mjesto); prazno = kupac nije upisan. */
-  kupac: string[];
+  firma: {
+    naziv: string;
+    /** "vl. Jela Klarić" ili prazno. */
+    vlasnik: string;
+    /** Adresa, JIB, (PDV broj), Telefon, Transakcijski račun, Banka – prazni se preskaču. */
+    retci: string[];
+  };
+  kontakti: KontaktPdf[];
+  /** Prazan tekst = polje ostaje prazno (kao u predlošku). */
+  kupac: { ime: string; adresa: string; jib: string; telefon: string };
   retci: RedakPdf[];
-  /** Redovi iznad trake UKUPNO (prazno kad nema popusta ni PDV-a). */
-  sazetak: RedSazetka[];
+  ugradnja: UgradnjaPdf | null;
+  /** Redovi iznad „Ukupno za platiti:”; ispod zadnjeg je crta. */
+  zbroj: RedZbroja[];
   ukupno: string;
-  podnozje: string;
+  datumIsporuke: string;
+  nacinPlacanja: string;
+  svrha: string;
+  /** "PDV uračunat u cijene" / "Cijene su bez PDV-a". */
+  napomenaPdv: string;
+  /** Rečenica na dnu za obveznike izvan sustava PDV-a; null u sustavu PDV-a. */
+  izjavaPdv: string | null;
 };
 
-/** "PR-2026-001" → "Predracun-PR-2026-001.pdf" (bez dijakritika i čudnih znakova u imenu). */
+export const IZJAVA_IZVAN_PDV = "Obveznik nije u sustavu PDV-a prema Zakonu o PDV-u BiH";
+
+/** "23-26." → "Predracun-23-26.pdf" (bez dijakritika, čudnih znakova i krajnjih crtica u imenu). */
 export function imeDatoteke(broj: string): string {
-  return `Predracun-${broj.replace(/[^A-Za-z0-9-]+/g, "-")}.pdf`;
+  const dio = broj.replace(/[^A-Za-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
+  return `Predracun-${dio}.pdf`;
 }
 
-/** Tekst koji uz PDF ide u Viber / WhatsApp / mail. */
+/** Tekst koji uz PDF ide u Viber / WhatsApp / mail. Broj "23-26." već završava točkom. */
 export function tekstPoruke(broj: string, nazivFirme: string): string {
-  return `Poštovani, u privitku je predračun ${broj}.\n${nazivFirme}`;
+  return `Poštovani, u privitku je predračun br. ${broj}${broj.endsWith(".") ? "" : "."}\n${nazivFirme}`;
 }
+
+const cisto = (t: string | null | undefined) => t?.trim() ?? "";
 
 const neprazno = (...dijelovi: (string | null | undefined)[]) =>
-  dijelovi.map((d) => d?.trim()).filter((d): d is string => Boolean(d));
+  dijelovi.map(cisto).filter((d) => d !== "");
+
+/** Popust u postotku kao u Excelu (format 0%): 5 → "5%", 7,5 → "7,5%". */
+const posto = (n: number) => `${formatBroj(n)}%`;
 
 /**
  * Spremljeni predračun + podaci firme → model PDF-a. Iznosi su oni spremljeni u bazi.
@@ -67,67 +119,97 @@ export function modelPdf(p: PredracunZaPdf, firma: FirmaPdf): PredracunPdf {
   if (!p.broj) throw new Error("Predračun nema broj.");
   const r = iznosiSpremljenog(p);
 
+  // Popust je jedan za cijeli predračun: postotak se upisuje u svaki redak, iznos je u zbroju.
+  const popustRetka = r.popust > 0 && r.popustPosto !== null ? posto(r.popustPosto) : "";
+
   const retci: Omit<RedakPdf, "rb">[] = p.stavke.map((s) => ({
-    opis: s.naziv,
-    kolicina: `${s.komada} kom${s.unos === "m2" && s.unesena_m2 !== null ? ` (${formatM2(s.unesena_m2)})` : ""}`,
+    naziv: s.naziv,
+    kolicina: `${s.komada}${s.unos === "m2" && s.unesena_m2 !== null ? ` (${formatM2(s.unesena_m2)})` : ""}`,
     cijena: formatKM(s.cijena_kom),
+    popust: popustRetka,
     iznos: formatKM(s.iznos),
   }));
-  if (p.ugradnja_m2 !== null && r.ugradnja !== null) {
-    retci.push({
-      opis: "Ugradnja",
-      kolicina: formatM2(p.ugradnja_m2),
-      cijena: formatKM(p.ugradnja_cijena_m2 ?? 0),
-      iznos: formatKM(r.ugradnja),
-    });
-  }
   if (p.ljepilo_kom !== null && r.ljepilo !== null) {
     retci.push({
-      opis: "Ljepilo",
-      kolicina: `${formatBroj(p.ljepilo_kom, 0)} kom`,
+      naziv: "Ljepilo",
+      kolicina: String(p.ljepilo_kom),
       cijena: formatKM(p.ljepilo_cijena ?? 0),
+      popust: popustRetka,
       iznos: formatKM(r.ljepilo),
     });
   }
-  if (p.prijevoz !== null && r.prijevoz !== null) {
-    retci.push({ opis: "Prijevoz", kolicina: "1", cijena: formatKM(r.prijevoz), iznos: formatKM(r.prijevoz) });
-  }
 
-  // Isti redoslijed i nazivi kao <Razrada> na detaljima; dodaci su već retci tablice.
-  const sazetak: RedSazetka[] = [];
-  if (r.popust > 0 || r.uSustavuPdv) sazetak.push({ naziv: "Međuzbroj", iznos: formatKM(r.medjuzbroj), istaknuto: true });
+  const ugradnja: UgradnjaPdf | null =
+    p.ugradnja_m2 !== null && r.ugradnja !== null
+      ? {
+          rb: "1.",
+          naziv: "Ugradnja",
+          m2: formatBroj(p.ugradnja_m2),
+          cijenaM2: formatKM(p.ugradnja_cijena_m2 ?? 0),
+          iznos: formatKM(r.ugradnja),
+        }
+      : null;
+
+  // Kao Excel: materijal, dostava (crta ispod), Ukupno za platiti; ostali redovi samo kad postoje.
+  const materijal = fenUKm(kmUFen(r.stavke) + kmUFen(r.ljepilo ?? 0));
+  const zbroj: RedZbroja[] = [{ naziv: "Ukupna cijena materijala:", iznos: formatKM(materijal) }];
+  if (r.ugradnja !== null) zbroj.push({ naziv: "Ugradnja:", iznos: formatKM(r.ugradnja) });
+  zbroj.push({ naziv: "Cijena dostave:", iznos: r.prijevoz !== null ? formatKM(r.prijevoz) : "" });
   if (r.popust > 0) {
-    sazetak.push({
-      naziv: r.popustPosto !== null ? `Popust ${formatBroj(r.popustPosto)} %` : "Popust",
+    zbroj.push({
+      naziv: r.popustPosto !== null ? `Popust ${posto(r.popustPosto)}:` : "Popust:",
       iznos: formatKM(-r.popust),
     });
-    if (r.uSustavuPdv) sazetak.push({ naziv: "Iznos nakon popusta", iznos: formatKM(r.medjuzbroj - r.popust) });
   }
   if (r.uSustavuPdv) {
-    sazetak.push({ naziv: "Osnovica", iznos: formatKM(r.osnovica) });
-    sazetak.push({ naziv: `PDV ${formatBroj(r.pdvStopa)} %`, iznos: formatKM(r.pdv) });
+    zbroj.push({ naziv: "Osnovica:", iznos: formatKM(r.osnovica) });
+    zbroj.push({ naziv: `PDV ${posto(r.pdvStopa)}:`, iznos: formatKM(r.pdv) });
   }
 
-  const naziv = firma.naziv_firme.trim();
+  const naziv = cisto(firma.naziv_firme);
+  const kontakti: KontaktPdf[] = (
+    [
+      ["web", firma.web],
+      ["instagram", firma.instagram],
+      ["whatsapp", firma.whatsapp],
+      ["viber", firma.viber],
+    ] as const
+  ).flatMap(([vrsta, tekst]) => (cisto(tekst) ? [{ vrsta, tekst: cisto(tekst) }] : []));
+
   return {
     broj: p.broj,
-    datum: formatDatum(p.updated_at),
+    datum: formatDatumPdf(p.updated_at),
+    vrijedi: p.vrijedi_dana ? brojSImenicom(p.vrijedi_dana, OBLIK_DAN) : "",
     imeDatoteke: imeDatoteke(p.broj),
     tekstPoruke: tekstPoruke(p.broj, naziv),
     firma: {
       naziv,
+      vlasnik: cisto(firma.vlasnik) ? `vl. ${cisto(firma.vlasnik)}` : "",
       retci: neprazno(
-        neprazno(firma.adresa, firma.mjesto).join(", "),
-        neprazno(firma.telefon, firma.email).join(" · "),
-        firma.jib?.trim() ? `JIB: ${firma.jib.trim()}` : null,
+        neprazno(firma.adresa, firma.mjesto).join("; "),
+        cisto(firma.jib) && `JIB: ${cisto(firma.jib)}`,
         // PDV broj samo ako je predračun napravljen u sustavu PDV-a (snimak postavki na predračunu).
-        p.pdv_u_sustavu && firma.pdv_broj?.trim() ? `PDV broj: ${firma.pdv_broj.trim()}` : null,
+        p.pdv_u_sustavu && cisto(firma.pdv_broj) ? `PDV broj: ${cisto(firma.pdv_broj)}` : null,
+        cisto(firma.telefon) && `Telefon: ${cisto(firma.telefon)}`,
+        cisto(firma.transakcijski_racun) && `Transakcijski račun: ${cisto(firma.transakcijski_racun)}`,
+        firma.banka,
       ),
     },
-    kupac: neprazno(p.kupac_ime, p.kupac_telefon, p.kupac_mjesto),
-    retci: retci.map((redak, i) => ({ rb: i + 1, ...redak })),
-    sazetak,
+    kontakti,
+    kupac: {
+      ime: cisto(p.kupac_ime),
+      adresa: neprazno(p.kupac_adresa, p.kupac_mjesto).join(", "),
+      jib: cisto(p.kupac_jib),
+      telefon: cisto(p.kupac_telefon),
+    },
+    retci: retci.map((redak, i) => ({ rb: `${i + 1}.`, ...redak })),
+    ugradnja,
+    zbroj,
     ukupno: formatKM(r.ukupno),
-    podnozje: neprazno(naziv, firma.telefon, firma.email).join(" · "),
+    datumIsporuke: p.datum_isporuke ? formatDatumPdf(p.datum_isporuke) : "",
+    nacinPlacanja: cisto(p.nacin_placanja),
+    svrha: cisto(p.svrha),
+    napomenaPdv: !r.uSustavuPdv || p.pdv_cijene_sa_pdv ? "PDV uračunat u cijene" : "Cijene su bez PDV-a",
+    izjavaPdv: r.uSustavuPdv ? null : IZJAVA_IZVAN_PDV,
   };
 }

@@ -153,7 +153,7 @@ Aplikaciju koriste **samo 1–3 vlasnika**, najčešće **na mobitelu**, u radnj
   - **Minus**: crvena točka + „Minus · −8 kom"
 - **Donji list (bottom sheet)**: za odabir obloge, potvrde i filtere. Ima ručku na vrhu i zaobljene gornje kutove od 20 px.
 - **Ljepljiva traka zbroja**: „Ukupno **832,67 KM**" s mogućnošću razvlačenja u razradu (Međuzbroj, Popust, Osnovica, PDV).
-- **Obavijest (toast)**: kratka potvrda iznad navigacije, npr. „Predračun PR-2026-014 je potvrđen. Stanje je ažurirano.".
+- **Obavijest (toast)**: kratka potvrda iznad navigacije, npr. „Predračun 14-26. je potvrđen. Stanje je ažurirano.".
 - **Prazno stanje**: motiv trake od 5 boja, kratka poruka i gumb akcije.
 - **Učitavanje**: skeleton blokovi u boji ruba.
 
@@ -192,8 +192,8 @@ Aplikaciju koriste **samo 1–3 vlasnika**, najčešće **na mobitelu**, u radnj
 - Gumbi: **„Dodaj na stanje"** (primarni), „Uredi" (sekundarni).
 - **Povijest kretanja**: lista s datumom, opisom i promjenom (zeleno +, crveno −):
   - „Ulaz robe · Kamion iz Zagreba · Ivan · **+50**" i tekstualni gumb **„Poništi"**
-  - „Predračun PR-2026-013 · Ivana K. · **−28**"
-  - „Storno PR-2026-011 · **+12**"
+  - „Predračun 13-26. · Ivana K. · **−28**"
+  - „Storno 11-26. · **+12**"
   - poništen ulaz: precrtan, s oznakom „Poništeno"
 
 ## 5. Obloga – nova / uredi
@@ -218,7 +218,7 @@ Aplikaciju koriste **samo 1–3 vlasnika**, najčešće **na mobitelu**, u radnj
 ## 7. Predračuni – lista
 - Čipovi statusa: **Otvoreni** (zadano) · Potvrđeni · Odbijeni · Stornirani · Svi. Pretraga „Kupac ili broj".
 - Redak:
-  - lijevo „PR-2026-014" (sitno) i **Amir H.** · Sarajevo,
+  - lijevo „14-26." (sitno) i **Amir H.** · Sarajevo,
   - desno **832,67 KM** i oznaka statusa,
   - ispod datum „18. 11. 2026.".
 - Plutajući gumb **„+"** za Novi predračun.
@@ -245,7 +245,7 @@ Jedan pomični ekran sa sekcijama:
 Prikaži i varijantu s uključenim PDV-om: Osnovica 711,68 · PDV 17 % 120,99 · Ukupno 832,67.
 
 ## 9. Predračun – detalji
-- Zaglavlje: **PR-2026-014**, oznaka **Otvoren**, datum.
+- Zaglavlje: **14-26.**, oznaka **Otvoren**, datum.
 - Kartica kupca (ime, telefon s ikonom za poziv, mjesto).
 - Stavke (sličica, naziv, „28 kom (12,50 m²) × 22,00 = 616,00 KM").
 - Dodaci, popust, razrada i veliki **UKUPNO 832,67 KM**.
@@ -273,7 +273,7 @@ Prikaži i varijantu s uključenim PDV-om: Osnovica 711,68 · PDV 17 % 120,99 ·
 - Velika kartica zbroja: „Studeni 2026. · **6.842,50 KM** · 12 prodaja".
 - Lista:
   - datum,
-  - „PR-2026-013 · Ivana K." ili „Brza prodaja",
+  - „13-26. · Ivana K." ili „Brza prodaja",
   - iznos desno.
   - Stornirane prodaje prigušene, precrtan iznos i oznaka „Storniran".
 - Plutajući gumb ili gumb u zaglavlju: **„Brza prodaja"**.
@@ -302,28 +302,21 @@ Grupirane kartice:
 
 # PDF predračun (A4, uspravno)
 
-- **Vrh**: tanka traka od 5 boja loga preko cijele širine.
-- **Zaglavlje**: lijevo puni logo (visine ~22 mm); desno podaci firme, sitno:
-  - Obloga.ba,
-  - Sarajevska b.b., 72230 Žepče,
-  - +387 63 766 063 · info@obloga.ba,
-  - JIB: 4200000000000,
-  - PDV broj (samo ako je u sustavu PDV-a).
-- **Naslov**: „PREDRAČUN" (Poppins 700, espresso) i desno „br. **PR-2026-014**" i „Datum: 18. 11. 2026.".
-- **Boje**: brend samo u logu, traci na vrhu i naslovu „PREDRAČUN". Sav ostali tekst i crte su neutralni (crni / sivi), da dokument izgleda mirno i profesionalno.
-- **Kupac** (okvir s tankim sivim rubom): Amir H. · 061 123 456 · Sarajevo.
-- **Tablica stavki**: zaglavlje sa svijetlosivom pozadinom, retci s tankim sivim razdjelnicima, iznosi nepodebljani. Stupci: **R. br. · Opis · Količina · Cijena · Iznos**. Primjer:
-  - 1 · WPC panel 16×280 – Svijetli hrast · 28 kom (12,50 m²) · 22,00 KM · 616,00 KM
-  - 2 · Ugradnja · 12,50 m² · 15,00 KM · 187,50 KM
-  - 3 · Ljepilo · 4 kom · 12,00 KM · 48,00 KM
-  - 4 · Prijevoz · 1 · 25,00 KM · 25,00 KM
-- **Sažetak desno**:
-  - Međuzbroj 876,50 KM,
-  - Popust 5 % −43,83 KM,
-  - (Osnovica / PDV 17 % ako je u sustavu PDV-a),
-  - **UKUPNO ZA PLATITI**: tanka tamna crta iznad, oznaka verzalom, a ispod nje iznos **832,67 KM** (Poppins 700, veći, poravnat desno). Bez pozadine i okvira.
-- **Podnožje**: jedan redak „obloga.ba · +387 63 766 063 · info@obloga.ba".
-- Bez potpisa, pečata, žiro računa i roka važenja. Sve treba ostati na jednoj stranici za tipičan predračun.
+Kopija Excel predloška vlasnika „Predračun Obloga.ba.xlsx” (crno-bijelo, Arial/Calibri, bez okvira oko ćelija). Mjere su iz predloška, smanjene kao kod ispisa „fit to page” (≈ 36 %).
+
+- **Zaglavlje lijevo**: **ERCEG** (podebljano, tamnoplavo `#1F497D`) i sitnije „vl. Jela Klarić”, ispod: „Sarajevska bb; 72230 Žepče”, „JIB: …”, (PDV broj u sustavu PDV-a), „Telefon: …”, „Transakcijski račun: …”, „Raiffeisen Bank”. Sve iz Postavki.
+- **Zaglavlje desno**: www.obloga.ba, Instagram, WhatsApp, Viber, poravnato desno, svaki s ikonom ispred. Prazan kontakt se ne prikazuje.
+- **Logo**: okrugli logo obloga.ba desno od sredine, ispod kontakata.
+- **Podaci**: **Predračun br.:** 23-26. · Datum: 08.10.2026. · Vrijedi: 15 dana (sitnije).
+- **Kupac**: **Kupac:** Mirko Mandura · Adresa: Matina · JIB: · Tel.: 067 10 08 437. Prazna polja ostaju prazna.
+- **Tablica**: zaglavlje podebljano s tankom crtom iznad i ispod: **Red. Br. · Naziv artikla · Količina/kom · Cijena/ kom · Popust % · Vrijednost:**. Retci bez crta, najmanje 6 redaka:
+  - 1. · PVC panel · 2 · 105,00 KM · · 210,00 KM
+  - Količina u m² ide u zagradu: „28 (12,5 m²)”. Ljepilo je redak tablice. Popust % je postotak popusta cijelog predračuna (prazno za popust u KM).
+- **Ugradnja** (samo kad je uključena): posebna tablica „Ugradnja:” · m2 · Cijena/ m2 · iznos.
+- **Zbroj desno**: Ukupna cijena materijala: · (Ugradnja:) · Cijena dostave: · (Popust:) · (Osnovica: / PDV 17%:), srednja crta ispod zadnjeg reda, pa **Ukupno za platiti:**.
+- **Uvjeti**: lijevo „Datum isporuke:”; desno „Način plaćanja: gotovinsko”, „Svrha:”, „PDV uračunat u cijene” (u sustavu PDV-a s cijenama bez PDV-a: „Cijene su bez PDV-a”).
+- **Dno**: izvan sustava PDV-a centrirano „Obveznik nije u sustavu PDV-a prema Zakonu o PDV-u BiH”.
+- Tipičan predračun stane na jednu stranicu; duži se nastavlja na drugoj s „1 / 2” dolje desno.
 
 # Ikona aplikacije
 
@@ -355,10 +348,10 @@ Za slike obloga koristi realistične fotografije tekstura drva, kamena, mramora 
 
 | Broj | Kupac | Mjesto | Iznos | Status |
 |---|---|---|---|---|
-| PR-2026-014 | Amir H. | Sarajevo | 832,67 KM | Otvoren |
-| PR-2026-013 | Ivana K. | Žepče | 1.245,00 KM | Potvrđen |
-| PR-2026-012 | Marko P. | Zenica | 410,40 KM | Odbijen |
-| PR-2026-011 | Selma M. | Tuzla | 2.130,00 KM | Storniran |
+| 14-26. | Amir H. | Sarajevo | 832,67 KM | Otvoren |
+| 13-26. | Ivana K. | Žepče | 1.245,00 KM | Potvrđen |
+| 12-26. | Marko P. | Zenica | 410,40 KM | Odbijen |
+| 11-26. | Selma M. | Tuzla | 2.130,00 KM | Storniran |
 
 **Bilješke**:
 - „Kupac iz Sarajeva – želi 2 travertino ploče, javiti se u petak"

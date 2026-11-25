@@ -46,7 +46,7 @@ Obloga.ba je mala firma iz Žepča koja prodaje dekorativne zidne obloge i panel
 | **m² po komadu** | Površina jednog komada, npr. 16 × 280 cm = 0,448 m². |
 | **Minimalno stanje** | Prag ispod kojeg se obloga označava kao „nisko stanje". |
 | **Ulaz robe** | Dodavanje komada na stanje kad roba stigne. |
-| **Predračun** | Ponuda kupcu s brojem `PR-2026-001`. Postaje prodaja tek kad se **potvrdi**. |
+| **Predračun** | Ponuda kupcu s brojem `1-26.`. Postaje prodaja tek kad se **potvrdi**. |
 | **Brza prodaja** | Prodaja na licu mjesta, bez predračuna i bez PDF-a. |
 | **Dodaci** | Ugradnja, ljepilo i prijevoz. Opcionalne stavke predračuna. |
 | **Storno** | Poništavanje potvrđene prodaje. Roba se vraća na stanje. |
@@ -147,16 +147,17 @@ Početni ekran daje kratak pregled:
 **PDF i slanje**
 - **Preuzmi PDF** radi i na mobitelu i na računalu.
 - **Pošalji** na mobitelu otvara izbornik za dijeljenje (Viber, WhatsApp, mail…) s PDF-om u privitku. Gdje dijeljenje nije podržano, PDF se preuzima.
-- Ime datoteke: `Predracun-PR-2026-001.pdf`.
-- Sadržaj PDF-a:
-  - logo i podaci firme (naziv, adresa, telefon, email, JIB; PDV broj samo ako je firma u sustavu PDV-a),
-  - naslov **PREDRAČUN br. PR-2026-001** i datum,
-  - podaci kupca (ime, telefon, mjesto),
-  - tablica stavki: naziv, količina (kom, i m² ako je unos bio u m²), cijena/kom, iznos,
-  - uključeni dodaci (ugradnja, ljepilo, prijevoz),
-  - popust (ako postoji),
-  - PDV razrada (ako je firma u sustavu PDV-a),
-  - **UKUPNO za platiti**.
+- Ime datoteke: `Predracun-1-26.pdf`.
+- Izgled PDF-a je **Excel predložak vlasnika** („Predračun Obloga.ba.xlsx”), vidi Design.md › PDF predračun. Sadržaj:
+  - podaci firme iz Postavki: naziv i vlasnik, adresa, JIB (PDV broj samo u sustavu PDV-a), telefon, transakcijski račun, banka; gore desno web i društvene mreže s ikonama; logo,
+  - **Predračun br.**, datum i rok valjanosti (**Vrijedi**: 15 dana),
+  - kupac: ime, adresa (adresa + mjesto), JIB, telefon,
+  - tablica: Red. Br. · Naziv artikla · Količina/kom · Cijena/ kom · Popust % · Vrijednost (obloge i ljepilo),
+  - ugradnja u posebnoj tablici (m² · cijena/m²),
+  - zbroj: ukupna cijena materijala, ugradnja, cijena dostave (prijevoz), popust, PDV razrada (ako je firma u sustavu PDV-a), **Ukupno za platiti**,
+  - datum isporuke, način plaćanja, svrha, „PDV uračunat u cijene”,
+  - izvan sustava PDV-a: „Obveznik nije u sustavu PDV-a prema Zakonu o PDV-u BiH”.
+- Uz kupca se na predračunu upisuju i **uvjeti** koji idu na PDF: način plaćanja (zadano „gotovinsko”), vrijedi (zadano 15 dana), datum isporuke i svrha.
 
 **Lista predračuna**
 - Filter po statusu (Otvoreni / Potvrđeni / Odbijeni / Stornirani / Svi) i pretraga po kupcu ili broju.
@@ -254,7 +255,7 @@ Nakon **Potvrdi** stanje ove obloge se smanji za **28 kom**. Ljepilo ne utječe 
 
 ### 6.5 Numeriranje
 
-- Predračuni: `PR-GGGG-NNN`, npr. `PR-2026-001`. Redni broj kreće od 001 svake godine i nikad se ne ponavlja.
+- Predračuni: `N-GG.` kao u Excel predlošku, npr. `23-26.` (23. predračun 2026.). Redni broj kreće od 1 svake godine i nikad se ne ponavlja. Do migracije 0010 format je bio `PR-2026-001`; broj se izvodi iz godine i rednog broja, pa i stari predračuni sada imaju novi zapis.
 - Brza prodaja nema broj predračuna.
 
 ### 6.6 Cijene i povijest
@@ -355,7 +356,7 @@ Ovo **nije** dio prve verzije, ali se može dodati kasnije:
 - [ ] **Popust** na ukupno, u % ili KM (25)
 - [ ] PDV podesiv u postavkama (3 načina) (4)
 - [ ] Ukupan iznos uvijek vidljiv, izračun uživo
-- [ ] Broj `PR-2026-001`, od 001 svake godine (28)
+- [ ] Broj `1-26.`, od 1 svake godine (28)
 - [ ] Statusi: Otvoren → Potvrđen / Odbijen; Potvrđen → Storniran
 - [ ] **Uređivanje** otvorenog predračuna, broj ostaje isti (27)
 - [ ] **Kopiraj** predračun (novi broj, trenutne cijene) (27)
@@ -366,7 +367,7 @@ Ovo **nije** dio prve verzije, ali se može dodati kasnije:
 - [ ] Lista predračuna s filterom statusa i pretragom
 
 ### PDF
-- [x] PDF predračun: logo, podaci firme, broj, datum, kupac, stavke, dodaci, popust, PDV, ukupno (16)
+- [x] PDF predračun po Excel predlošku: logo, podaci firme, broj, datum, kupac, stavke, dodaci, popust, PDV, ukupno (16)
 - [x] Ispravna hrvatska slova (č, ć, đ, š, ž)
 - [ ] **Pošalji** preko Vibera, WhatsAppa ili maila (dijeljenje s mobitela) (14)
 - [ ] **Preuzmi PDF**, i na mobitelu (14)

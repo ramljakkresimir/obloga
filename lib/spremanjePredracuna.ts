@@ -3,6 +3,8 @@ import { z } from "zod";
 import {
   DUZINA,
   imaNajviseDecimala,
+  jeIspravanDatum,
+  NAJVISE_DANA_VALJANOSTI,
   NAJVISE_KM,
   NAJVISE_KOMADA,
   NAJVISE_M2,
@@ -32,6 +34,12 @@ export const shemaPodataka = z.object({
   kupacIme: tekst(DUZINA.kupacIme),
   kupacTelefon: tekst(DUZINA.kupacTelefon),
   kupacMjesto: tekst(DUZINA.kupacMjesto),
+  kupacAdresa: tekst(DUZINA.kupacAdresa),
+  kupacJib: tekst(DUZINA.kupacJib),
+  svrha: tekst(DUZINA.svrha),
+  nacinPlacanja: tekst(DUZINA.nacinPlacanja),
+  datumIsporuke: z.string().refine(jeIspravanDatum, "Neispravan datum isporuke.").nullable(),
+  vrijediDana: z.number().int().min(1).max(NAJVISE_DANA_VALJANOSTI).nullable(),
   napomena: tekst(DUZINA.napomena),
   stavke: z
     .array(

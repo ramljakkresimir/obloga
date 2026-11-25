@@ -79,7 +79,7 @@ erDiagram
   predracuni {
     bigint id PK
     enum vrsta
-    text broj "PR-2026-001"
+    text broj "23-26."
     enum status
     text kupac_ime
     numeric ukupno
@@ -142,6 +142,14 @@ create table public.postavke (
   cijene_sa_pdv   boolean not null default true,     -- unesene cijene uključuju PDV
   pdv_stopa       numeric(5,2) not null default 17 check (pdv_stopa between 0 and 100),
   ljepilo_cijena  numeric(10,2) not null default 0 check (ljepilo_cijena >= 0),
+  -- zaglavlje PDF predračuna (0010_predracun_excel_predlozak)
+  vlasnik             text,                           -- na PDF-u „vl. <vlasnik>” uz naziv
+  banka               text,
+  transakcijski_racun text,
+  web                 text,                           -- kontakti gore desno, svaki s ikonom
+  instagram           text,
+  whatsapp            text,
+  viber               text,
   updated_at      timestamptz not null default now()
 );
 ```
@@ -233,17 +241,23 @@ create table public.predracuni (
   redni_broj         integer,
   broj               text generated always as (
                        case when redni_broj is null then null
-                            else 'PR-' || godina::text || '-' ||
-                                 case when redni_broj < 1000 then lpad(redni_broj::text, 3, '0')
-                                      else redni_broj::text end
-                       end) stored,
+                            else redni_broj::text || '-' || lpad((godina % 100)::text, 2, '0') || '.'
+                       end) stored,                     -- "23-26." (Excel predložak, od 0010)
   status             public.status_predracuna not null default 'otvoren',
 
   -- kupac (bez baze kupaca)
   kupac_ime          text,
   kupac_telefon      text,
   kupac_mjesto       text,
+  kupac_adresa       text,                                -- od 0010
+  kupac_jib          text,
   napomena           text,                                -- interna, ne ide na PDF
+
+  -- uvjeti na PDF-u (od 0010; null = prazno na PDF-u)
+  svrha              text,
+  nacin_placanja     text,                                -- uređivač predlaže „gotovinsko”
+  datum_isporuke     date,
+  vrijedi_dana       smallint check (vrijedi_dana between 1 and 365),  -- uređivač predlaže 15
 
   -- dodaci (null = isključeno)
   ugradnja_m2        numeric(10,2) check (ugradnja_m2 > 0),
@@ -417,6 +431,8 @@ Zajedničko svim RPC funkcijama koje pišu:
 ```json
 {
   "kupac_ime": "Amir H.", "kupac_telefon": "061 123 456", "kupac_mjesto": "Sarajevo",
+  "kupac_adresa": "Glavna 12", "kupac_jib": "", "svrha": "", "nacin_placanja": "gotovinsko",
+  "datum_isporuke": null, "vrijedi_dana": 15,
   "napomena": "Zove poslije 16h",
   "ugradnja_m2": 12.5, "ugradnja_cijena_m2": 15.00,
   "ljepilo_kom": 4, "ljepilo_cijena": 12.00,

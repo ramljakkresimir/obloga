@@ -1,40 +1,33 @@
-// PDF predračuna (Design.md › PDF predračun, A4 uspravno).
+// PDF predračuna po Excel predlošku „Predračun Obloga.ba.xlsx” (Design.md › PDF predračun, A4 uspravno).
 // Učitava se samo dinamički iz PdfGumbi (import() na klik), pa @react-pdf ne ulazi u početni JS.
+//
+// Sve mjere su iz predloška: širine stupaca (px), visine redaka i veličine fonta (pt) množe se istim
+// faktorom K kojim Excel pri ispisu sliku lista smješta u širinu A4 („fit to page”).
 
-import { Document, Font, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
-import { LOGO_PDF, type PredracunPdf as Model } from "@/lib/pdf";
-
-// Neutralne boje dokumenta; brend (app/globals.css @theme) samo u logu, traci i naslovu.
-const BOJA = {
-  espresso: "#311212",
-  tekst: "#1f1f1f",
-  sivo: "#6b6b6b",
-  crta: "#d9d9d9",
-  crtaJaka: "#1f1f1f",
-  zaglavljeTablice: "#f2f2f2",
-};
-const TRAKA = ["#311212", "#553c3c", "#8f6848", "#eeb86b", "#f4991a"];
+import type { ReactNode } from "react";
+import { Document, Font, Image, Page, StyleSheet, Text, View, type Styles } from "@react-pdf/renderer";
+import { SLIKE_PDF, type PredracunPdf as Model, type VrstaKontakta } from "@/lib/pdf";
 
 let registrirano = false;
 
 /**
- * Fontovi s hrvatskim slovima (ugrađeni PDF fontovi nemaju č, ć, đ, š, ž). Statični TTF iz public/fonts.
+ * Arimo = metrički isti kao Arial, Carlito = kao Calibri (fontovi iz predloška), oba s č, ć, đ, š, ž.
  * Jednom po sesiji; `origin` jer react-pdf u pregledniku dohvaća fontove po apsolutnom URL-u.
  */
 export function registrirajFontove(origin: string) {
   if (registrirano) return;
   Font.register({
-    family: "Nunito Sans",
+    family: "Arimo",
     fonts: [
-      { src: `${origin}/fonts/NunitoSans-Regular.ttf`, fontWeight: 400 },
-      { src: `${origin}/fonts/NunitoSans-Bold.ttf`, fontWeight: 700 },
+      { src: `${origin}/fonts/Arimo-Regular.ttf`, fontWeight: 400 },
+      { src: `${origin}/fonts/Arimo-Bold.ttf`, fontWeight: 700 },
     ],
   });
   Font.register({
-    family: "Poppins",
+    family: "Carlito",
     fonts: [
-      { src: `${origin}/fonts/Poppins-SemiBold.ttf`, fontWeight: 600 },
-      { src: `${origin}/fonts/Poppins-Bold.ttf`, fontWeight: 700 },
+      { src: `${origin}/fonts/Carlito-Regular.ttf`, fontWeight: 400 },
+      { src: `${origin}/fonts/Carlito-Bold.ttf`, fontWeight: 700 },
     ],
   });
   // Bez rastavljanja riječi na slogove (engleska pravila kvare hrvatske riječi).
@@ -42,165 +35,418 @@ export function registrirajFontove(origin: string) {
   registrirano = true;
 }
 
-const MM = 72 / 25.4;
-const RUB_STRANICE = 16 * MM;
+/* ---------------------------------------------------------------------------
+ * Mjere iz predloška
+ * ------------------------------------------------------------------------- */
+
+const INC = 72;
+const A4 = { sirina: 595.28, visina: 841.89 };
+/** Margine stranice iz predloška (inči). */
+const RUB = { lijevo: 0.5 * INC, desno: 0.34 * INC, gore: 0.72 * INC, dolje: 0.75 * INC };
+/** Širine stupaca A–H u pikselima (Excel širina × 7 px, Calibri 11). */
+const STUPCI_PX = [138, 104, 124, 397, 241, 246, 327, 405] as const;
+const PX_U_PT = 0.75;
+const SIRINA_SADRZAJA = A4.sirina - RUB.lijevo - RUB.desno;
+/** Faktor ispisa: list širok STUPCI_PX smanjen u širinu A4 između margina (≈ 0,36). */
+const K = SIRINA_SADRZAJA / (STUPCI_PX.reduce((a, b) => a + b, 0) * PX_U_PT);
+
+/** Excel piksel → PDF točka. */
+const px = (n: number) => n * PX_U_PT * K;
+/** Excel točka (visina retka, veličina fonta) → PDF točka. */
+const pt = (n: number) => n * K;
+
+const [A, B, C, D, E, F, G, H] = STUPCI_PX.map(px);
+
+const TAMNOPLAVA = "#1F497D"; // tema dk2 – boja naziva firme
+const CRNA = "#000000";
+const TANKA = 0.5;
+const SREDNJA = 1;
+const RAZMAK = px(3); // unutarnji razmak ćelije
+
+/* ---------------------------------------------------------------------------
+ * Stilovi
+ * ------------------------------------------------------------------------- */
 
 const s = StyleSheet.create({
   stranica: {
-    fontFamily: "Nunito Sans",
-    fontSize: 10,
-    color: BOJA.tekst,
-    paddingTop: 12 * MM,
-    paddingBottom: 18 * MM,
-    paddingHorizontal: RUB_STRANICE,
+    fontFamily: "Arimo",
+    fontSize: pt(24),
+    color: CRNA,
+    paddingTop: RUB.gore,
+    paddingBottom: RUB.dolje,
+    paddingLeft: RUB.lijevo,
+    paddingRight: RUB.desno,
   },
-  traka: { position: "absolute", top: 0, left: 0, right: 0, height: 4, flexDirection: "row" },
-  trakaDio: { flex: 1 },
+  red: { flexDirection: "row" },
+  dolje: { justifyContent: "flex-end" },
+  gore: { justifyContent: "flex-start" },
+  sredina: { justifyContent: "center" },
+  celija: { paddingHorizontal: RAZMAK },
+  desno: { textAlign: "right" },
+  centar: { textAlign: "center" },
 
-  zaglavlje: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  logo: { height: 22 * MM, width: 22 * MM * (600 / 619) },
-  firma: { alignItems: "flex-end", maxWidth: "60%" },
-  firmaNaziv: { fontFamily: "Poppins", fontWeight: 600, fontSize: 11, color: BOJA.tekst, marginBottom: 2 },
-  firmaRedak: { fontSize: 8.5, color: BOJA.sivo, textAlign: "right", lineHeight: 1.4 },
+  arial24: { fontFamily: "Arimo", fontSize: pt(24) },
+  arial24b: { fontFamily: "Arimo", fontSize: pt(24), fontWeight: 700 },
+  arial22: { fontFamily: "Arimo", fontSize: pt(22) },
+  arial20: { fontFamily: "Arimo", fontSize: pt(20) },
+  calibri24: { fontFamily: "Carlito", fontSize: pt(24) },
+  calibri24b: { fontFamily: "Carlito", fontSize: pt(24), fontWeight: 700 },
 
-  naslovRed: {
-    marginTop: 10 * MM,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-  },
-  naslov: { fontFamily: "Poppins", fontWeight: 700, fontSize: 22, color: BOJA.espresso, letterSpacing: 0.5 },
-  broj: { textAlign: "right", fontSize: 10, lineHeight: 1.5 },
-  podebljano: { fontWeight: 700, color: BOJA.tekst },
+  logo: { position: "absolute", top: 0, left: A + B + C + D + E + px(153.7), width: px(524.8), height: px(787) },
+  kontakt: { flexDirection: "row", justifyContent: "flex-end", alignItems: "flex-end" },
 
-  kupac: {
-    marginTop: 6 * MM,
-    borderWidth: 0.75,
-    borderColor: BOJA.crta,
-    borderRadius: 4,
-    paddingVertical: 3 * MM,
-    paddingHorizontal: 4 * MM,
-  },
-  oznaka: { fontSize: 7.5, color: BOJA.sivo, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 },
-  kupacTekst: { fontSize: 10.5 },
-
-  tablica: { marginTop: 6 * MM },
-  redZaglavlja: {
-    flexDirection: "row",
-    backgroundColor: BOJA.zaglavljeTablice,
-    borderBottomWidth: 0.75,
-    borderBottomColor: BOJA.crta,
-    paddingVertical: 5,
-  },
-  celijaZaglavlja: { fontWeight: 700, fontSize: 8.5, color: BOJA.tekst },
-  red: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: BOJA.crta, paddingVertical: 6 },
-  stRb: { width: "7%", paddingLeft: 6 },
-  stOpis: { width: "43%", paddingRight: 8 },
-  stKolicina: { width: "18%", textAlign: "right", paddingRight: 8 },
-  stCijena: { width: "15%", textAlign: "right", paddingRight: 8 },
-  stIznos: { width: "17%", textAlign: "right", paddingRight: 6 },
-
-  sazetak: { marginTop: 5 * MM, marginLeft: "auto", width: "50%" },
-  redSazetka: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 2.5 },
-  sivo: { color: BOJA.sivo },
-  ukupno: { marginTop: 2.5 * MM, borderTopWidth: 1, borderTopColor: BOJA.crtaJaka, paddingTop: 2.5 * MM },
-  ukupnoTekst: { fontWeight: 700, fontSize: 9, color: BOJA.tekst, textTransform: "uppercase", letterSpacing: 0.8 },
-  ukupnoIznos: { fontFamily: "Poppins", fontWeight: 700, fontSize: 16, color: BOJA.tekst, textAlign: "right", marginTop: 1 },
-
-  podnozje: {
-    position: "absolute",
-    bottom: 8 * MM,
-    left: RUB_STRANICE,
-    right: RUB_STRANICE,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    borderTopWidth: 0.5,
-    borderTopColor: BOJA.crta,
-    paddingTop: 2 * MM,
-    fontSize: 8,
-    color: BOJA.sivo,
-  },
+  zaglavljeTablice: { borderTopWidth: TANKA, borderBottomWidth: TANKA, borderColor: CRNA },
+  crtaZbroja: { borderBottomWidth: SREDNJA, borderColor: CRNA },
 });
 
+/** Ikona uz kontakt: veličina i razmak iz predloška (web je veća ikona). */
+const IKONA: Record<VrstaKontakta, { sirina: number; visina: number }> = {
+  web: { sirina: px(54.2), visina: px(48.4) },
+  instagram: { sirina: px(32.5), visina: px(33.3) },
+  whatsapp: { sirina: px(32), visina: px(32.4) },
+  viber: { sirina: px(32.9), visina: px(32.9) },
+};
+
+/** Visine redaka predloška (pt). */
+const VISINA = {
+  r1: 46.2,
+  r2: 30,
+  r5: 27.6,
+  r6: 28.8,
+  r7: 37.2,
+  r8: 44.4,
+  podaci: 44.4,
+  vrijedi: 44.4,
+  r12: 62.4,
+  kupac: 35.4,
+  adresa: 39,
+  jib: 33.6,
+  tel: 40.8,
+  r17: 40.8,
+  zaglavljeTablice: 63,
+  stavka: 48,
+  zaglavljeUgradnje: 55.8,
+  ugradnja: 47.4,
+  razmakZbroja: 21,
+  zbroj: 52.8,
+  r36: 206.4,
+  izjava: 101.4,
+};
+
+/** Predložak ima 6 redaka za stavke; kraći predračun ih popunjava praznima. */
+const NAJMANJE_REDAKA = 6;
+
+/* ---------------------------------------------------------------------------
+ * Pomoćne komponente
+ * ------------------------------------------------------------------------- */
+
+type Okomito = "gore" | "sredina" | "dolje";
+
+/** Ćelija zadane širine; tekst se poravnava okomito kao u Excelu. */
+function Celija({
+  sirina,
+  okomito = "dolje",
+  stil,
+  children,
+}: {
+  sirina: number;
+  okomito?: Okomito;
+  stil?: Styles[string] | Styles[string][];
+  children?: ReactNode;
+}) {
+  return <View style={[s.celija, s[okomito], { width: sirina }, ...(Array.isArray(stil) ? stil : stil ? [stil] : [])]}>{children}</View>;
+}
+
+/** Red fiksne (najmanje) visine iz predloška. */
+function Red({ visina, stil, children, wrap = false }: { visina: number; stil?: Styles[string]; children?: ReactNode; wrap?: boolean }) {
+  return (
+    <View style={[s.red, { minHeight: pt(visina) }, ...(stil ? [stil] : [])]} wrap={wrap}>
+      {children}
+    </View>
+  );
+}
+
+function Kontakt({ kontakt, origin }: { kontakt: Model["kontakti"][number] | undefined; origin: string }) {
+  if (!kontakt) return null;
+  const ikona = IKONA[kontakt.vrsta];
+  return (
+    <View style={s.kontakt}>
+      {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf <Image> nema alt */}
+      <Image src={`${origin}${SLIKE_PDF[kontakt.vrsta]}`} style={{ width: ikona.sirina, height: ikona.visina, marginRight: px(14) }} />
+      <Text style={s.arial24}>{kontakt.tekst}</Text>
+    </View>
+  );
+}
+
+/* ---------------------------------------------------------------------------
+ * Dokument
+ * ------------------------------------------------------------------------- */
+
 export function PredracunPdf({ model: m, origin }: { model: Model; origin: string }) {
+  const lijevo = A + B + C + D + E + F + G; // tekst zaglavlja se prelijeva preko A–G
+  const [r2, r3, r4, r5, r6, ...visakRedaka] = m.firma.retci;
+  const prazniRetci = Math.max(0, NAJMANJE_REDAKA - m.retci.length);
+  const zadnjiZbroj = m.zbroj.length - 1;
+
   return (
     <Document title={`Predračun ${m.broj}`} author={m.firma.naziv} creator={m.firma.naziv} producer={m.firma.naziv} language="hr">
       <Page size="A4" style={s.stranica}>
-        <View style={s.traka} fixed>
-          {TRAKA.map((boja) => (
-            <View key={boja} style={[s.trakaDio, { backgroundColor: boja }]} />
-          ))}
-        </View>
-
-        <View style={s.zaglavlje}>
+        {/* Zaglavlje: retci 1–8 s logom preko F–H */}
+        <View>
           {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf <Image> nema alt */}
-          <Image src={`${origin}${LOGO_PDF}`} style={s.logo} />
-          <View style={s.firma}>
-            <Text style={s.firmaNaziv}>{m.firma.naziv}</Text>
-            {m.firma.retci.map((redak) => (
-              <Text key={redak} style={s.firmaRedak}>
-                {redak}
+          <Image src={`${origin}${SLIKE_PDF.logo}`} style={s.logo} />
+
+          <Red visina={VISINA.r1}>
+            <Celija sirina={lijevo}>
+              <Text>
+                <Text style={[s.arial24b, { fontSize: pt(30), color: TAMNOPLAVA }]}>{m.firma.naziv}</Text>
+                {m.firma.vlasnik && (
+                  <>
+                    <Text style={[s.arial24, { fontSize: pt(28) }]}> </Text>
+                    <Text style={[s.arial24, { fontSize: pt(18) }]}>{m.firma.vlasnik}</Text>
+                  </>
+                )}
               </Text>
-            ))}
-          </View>
+            </Celija>
+            <Celija sirina={H}>
+              <Kontakt kontakt={m.kontakti[0]} origin={origin} />
+            </Celija>
+          </Red>
+          {[r2, r3, r4].map((redak, i) => (
+            <Red key={i} visina={VISINA.r2}>
+              <Celija sirina={lijevo}>
+                <Text style={s.arial22}>{redak ?? ""}</Text>
+              </Celija>
+              <Celija sirina={H}>
+                <Kontakt kontakt={m.kontakti[i + 1]} origin={origin} />
+              </Celija>
+            </Red>
+          ))}
+          <Red visina={VISINA.r5}>
+            <Celija sirina={lijevo}>
+              <Text style={s.arial22}>{r5 ?? ""}</Text>
+            </Celija>
+          </Red>
+          <Red visina={VISINA.r6}>
+            <Celija sirina={lijevo}>
+              <Text style={s.arial22}>{r6 ?? ""}</Text>
+            </Celija>
+          </Red>
+          {visakRedaka.map((redak) => (
+            <Red key={redak} visina={VISINA.r6}>
+              <Celija sirina={lijevo}>
+                <Text style={s.arial22}>{redak}</Text>
+              </Celija>
+            </Red>
+          ))}
+          <Red visina={VISINA.r7 + VISINA.r8 - visakRedaka.length * VISINA.r6} />
+
+          {/* Broj, datum, rok */}
+          <Red visina={VISINA.podaci}>
+            <Celija sirina={A + B} okomito="gore">
+              <Text style={s.arial24b}>Predračun br.:</Text>
+            </Celija>
+            <Celija sirina={C + D} okomito="gore">
+              <Text>{m.broj}</Text>
+            </Celija>
+          </Red>
+          <Red visina={VISINA.podaci}>
+            <Celija sirina={A} okomito="gore">
+              <Text>Datum:</Text>
+            </Celija>
+            <Celija sirina={B + C + D} okomito="gore">
+              <Text>{m.datum}</Text>
+            </Celija>
+          </Red>
+          <Red visina={VISINA.vrijedi}>
+            <Celija sirina={A} okomito="gore">
+              <Text style={s.arial20}>Vrijedi:</Text>
+            </Celija>
+            <Celija sirina={B + C + D} okomito="gore">
+              <Text style={s.arial20}>{m.vrijedi}</Text>
+            </Celija>
+          </Red>
+          <Red visina={VISINA.r12} />
+
+          {/* Kupac */}
+          {(
+            [
+              ["Kupac:", m.kupac.ime, VISINA.kupac, true],
+              ["Adresa:", m.kupac.adresa, VISINA.adresa, false],
+              ["JIB:", m.kupac.jib, VISINA.jib, false],
+              ["Tel.:", m.kupac.telefon, VISINA.tel, false],
+            ] as const
+          ).map(([oznaka, vrijednost, visina, podebljano]) => (
+            <Red key={oznaka} visina={visina}>
+              <Celija sirina={A} okomito="gore">
+                <Text style={podebljano ? s.arial24b : undefined}>{oznaka}</Text>
+              </Celija>
+              <Celija sirina={B + C + D + E + F} okomito="gore">
+                <Text>{vrijednost}</Text>
+              </Celija>
+            </Red>
+          ))}
+          <Red visina={VISINA.r17} />
         </View>
 
-        <View style={s.naslovRed}>
-          <Text style={s.naslov}>PREDRAČUN</Text>
-          <View>
-            <Text style={s.broj}>
-              br. <Text style={s.podebljano}>{m.broj}</Text>
-            </Text>
-            <Text style={s.broj}>Datum: {m.datum}</Text>
-          </View>
-        </View>
+        {/* Stavke */}
+        <Red visina={VISINA.zaglavljeTablice} stil={s.zaglavljeTablice}>
+          <Celija sirina={A + B} okomito="sredina">
+            <Text style={s.calibri24b}>Red. Br.</Text>
+          </Celija>
+          <Celija sirina={C + D} okomito="sredina">
+            <Text style={s.calibri24b}>Naziv artikla</Text>
+          </Celija>
+          <Celija sirina={E} okomito="sredina">
+            <Text style={s.arial24b}>Količina/kom</Text>
+          </Celija>
+          <Celija sirina={F} okomito="sredina" stil={s.desno}>
+            <Text style={s.arial24b}>Cijena/ kom</Text>
+          </Celija>
+          <Celija sirina={G} okomito="sredina" stil={s.desno}>
+            <Text style={s.arial24b}>Popust %</Text>
+          </Celija>
+          <Celija sirina={H} okomito="sredina" stil={s.desno}>
+            <Text style={s.arial24b}>Vrijednost:</Text>
+          </Celija>
+        </Red>
+        {m.retci.map((r) => (
+          <Red key={r.rb} visina={VISINA.stavka}>
+            <Celija sirina={A + B} okomito="sredina">
+              <Text style={s.calibri24b}>{r.rb}</Text>
+            </Celija>
+            <Celija sirina={C + D} okomito="sredina">
+              <Text style={s.calibri24}>{r.naziv}</Text>
+            </Celija>
+            <Celija sirina={E} okomito="sredina" stil={s.centar}>
+              <Text>{r.kolicina}</Text>
+            </Celija>
+            <Celija sirina={F} okomito="sredina">
+              <Text>{r.cijena}</Text>
+            </Celija>
+            <Celija sirina={G} okomito="sredina" stil={s.desno}>
+              <Text>{r.popust}</Text>
+            </Celija>
+            <Celija sirina={H} okomito="sredina" stil={s.desno}>
+              <Text>{r.iznos}</Text>
+            </Celija>
+          </Red>
+        ))}
+        {Array.from({ length: prazniRetci }, (_, i) => (
+          <Red key={`prazno-${i}`} visina={VISINA.stavka} />
+        ))}
 
-        {m.kupac.length > 0 && (
-          <View style={s.kupac} wrap={false}>
-            <Text style={s.oznaka}>Kupac</Text>
-            <Text style={s.kupacTekst}>
-              <Text style={s.podebljano}>{m.kupac[0]}</Text>
-              {m.kupac.slice(1).map((dio) => ` · ${dio}`).join("")}
-            </Text>
+        {/* Ugradnja (u predlošku skrivena tablica, ovdje samo kad je uključena) */}
+        {m.ugradnja && (
+          <View wrap={false}>
+            <Red visina={VISINA.zaglavljeUgradnje} stil={s.zaglavljeTablice}>
+              <Celija sirina={A + B + C + D} okomito="sredina">
+                <Text style={s.calibri24b}>Ugradnja:</Text>
+              </Celija>
+              <Celija sirina={E} okomito="sredina" stil={s.centar}>
+                <Text style={s.arial24b}>m2</Text>
+              </Celija>
+              <Celija sirina={F} okomito="sredina" stil={s.desno}>
+                <Text style={s.arial24b}>Cijena/ m2</Text>
+              </Celija>
+              <Celija sirina={G + H} />
+            </Red>
+            <Red visina={VISINA.ugradnja}>
+              <Celija sirina={A + B} okomito="sredina">
+                <Text style={s.calibri24b}>{m.ugradnja.rb}</Text>
+              </Celija>
+              <Celija sirina={C + D} okomito="sredina">
+                <Text style={s.calibri24}>{m.ugradnja.naziv}</Text>
+              </Celija>
+              <Celija sirina={E} okomito="sredina" stil={s.centar}>
+                <Text>{m.ugradnja.m2}</Text>
+              </Celija>
+              <Celija sirina={F} okomito="sredina">
+                <Text>{m.ugradnja.cijenaM2}</Text>
+              </Celija>
+              <Celija sirina={G} />
+              <Celija sirina={H} okomito="sredina" stil={s.desno}>
+                <Text>{m.ugradnja.iznos}</Text>
+              </Celija>
+            </Red>
           </View>
         )}
 
-        <View style={s.tablica}>
-          <View style={s.redZaglavlja}>
-            <Text style={[s.celijaZaglavlja, s.stRb]}>R. br.</Text>
-            <Text style={[s.celijaZaglavlja, s.stOpis]}>Opis</Text>
-            <Text style={[s.celijaZaglavlja, s.stKolicina]}>Količina</Text>
-            <Text style={[s.celijaZaglavlja, s.stCijena]}>Cijena</Text>
-            <Text style={[s.celijaZaglavlja, s.stIznos]}>Iznos</Text>
-          </View>
-          {m.retci.map((r) => (
-            <View key={r.rb} style={s.red} wrap={false}>
-              <Text style={[s.stRb, s.sivo]}>{r.rb}</Text>
-              <Text style={s.stOpis}>{r.opis}</Text>
-              <Text style={s.stKolicina}>{r.kolicina}</Text>
-              <Text style={s.stCijena}>{r.cijena}</Text>
-              <Text style={s.stIznos}>{r.iznos}</Text>
-            </View>
+        {/* Zbroj, uvjeti i izjava o PDV-u */}
+        <View wrap={false}>
+          <Red visina={VISINA.razmakZbroja * 2} />
+          {m.zbroj.map((r, i) => (
+            <Red key={r.naziv} visina={VISINA.zbroj}>
+              <Celija sirina={A + B + C + D + E} />
+              {/* Oznaka se (kao u Excelu) prelijeva ulijevo iz G u F. */}
+              <Celija sirina={F + G} okomito="gore" stil={s.desno}>
+                <Text style={s.calibri24b}>{r.naziv}</Text>
+              </Celija>
+              <Celija sirina={H} okomito="gore" stil={s.desno}>
+                <Text>{r.iznos}</Text>
+              </Celija>
+              {/* Srednja crta samo ispod G i H. */}
+              {i === zadnjiZbroj && <View style={[s.crtaZbroja, { position: "absolute", bottom: 0, right: 0, width: G + H }]} />}
+            </Red>
           ))}
+          <Red visina={VISINA.zbroj}>
+            <Celija sirina={A + B + C + D + E} />
+            <Celija sirina={F + G} stil={s.desno}>
+              <Text style={s.calibri24b}>Ukupno za platiti:</Text>
+            </Celija>
+            <Celija sirina={H} stil={s.desno}>
+              <Text>{m.ukupno}</Text>
+            </Celija>
+          </Red>
+          <Red visina={VISINA.zbroj} />
+
+          <Red visina={VISINA.zbroj}>
+            <Celija sirina={A + B} stil={s.desno}>
+              <Text style={s.arial20}>Datum isporuke:</Text>
+            </Celija>
+            <Celija sirina={C + D + E}>
+              <Text style={s.arial20}>{m.datumIsporuke}</Text>
+            </Celija>
+            <Celija sirina={F + G} stil={s.desno}>
+              <Text>Način plaćanja:</Text>
+            </Celija>
+            <Celija sirina={H}>
+              <Text>{m.nacinPlacanja}</Text>
+            </Celija>
+          </Red>
+          <Red visina={VISINA.zbroj}>
+            <Celija sirina={A + B + C + D + E} />
+            <Celija sirina={F + G} stil={s.desno}>
+              <Text>Svrha:</Text>
+            </Celija>
+            <Celija sirina={H}>
+              <Text>{m.svrha}</Text>
+            </Celija>
+          </Red>
+          <Red visina={VISINA.zbroj}>
+            <Celija sirina={A + B + C + D + E} />
+            <Celija sirina={F + G} stil={s.desno}>
+              <Text>{m.napomenaPdv}</Text>
+            </Celija>
+          </Red>
+
+          {m.izjavaPdv && (
+            <>
+              <Red visina={VISINA.r36} />
+              <Red visina={VISINA.izjava}>
+                <Celija sirina={SIRINA_SADRZAJA} okomito="sredina" stil={s.centar}>
+                  <Text style={s.arial20}>{m.izjavaPdv}</Text>
+                </Celija>
+              </Red>
+            </>
+          )}
         </View>
 
-        <View style={s.sazetak} wrap={false}>
-          {m.sazetak.map((r) => (
-            <View key={r.naziv} style={s.redSazetka}>
-              <Text style={r.istaknuto ? s.podebljano : s.sivo}>{r.naziv}</Text>
-              <Text style={r.istaknuto ? s.podebljano : undefined}>{r.iznos}</Text>
-            </View>
-          ))}
-          <View style={s.ukupno}>
-            <Text style={s.ukupnoTekst}>UKUPNO ZA PLATITI</Text>
-            <Text style={s.ukupnoIznos}>{m.ukupno}</Text>
-          </View>
-        </View>
-
-        <View style={s.podnozje} fixed>
-          <Text>{m.podnozje}</Text>
-          <Text render={({ pageNumber, totalPages }) => (totalPages > 1 ? `${pageNumber} / ${totalPages}` : "")} />
-        </View>
+        <Text
+          fixed
+          style={[s.arial20, { position: "absolute", bottom: RUB.dolje / 2, right: RUB.desno }]}
+          render={({ pageNumber, totalPages }) => (totalPages > 1 ? `${pageNumber} / ${totalPages}` : "")}
+        />
       </Page>
     </Document>
   );

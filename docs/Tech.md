@@ -13,7 +13,7 @@ flowchart LR
   V -->|"@supabase/ssr (kolačići)"| SA["Supabase Auth"]
   V -->|"SQL preko PostgREST + RPC"| DB[("Supabase Postgres<br/>RLS")]
   M -->|"upload slika (preglednik)"| ST["Supabase Storage<br/>bucket slike-obloga"]
-  M -.->|"PDF se generira u pregledniku<br/>@react-pdf/renderer"| PDF["Predracun-PR-2026-001.pdf"]
+  M -.->|"PDF se generira u pregledniku<br/>@react-pdf/renderer"| PDF["Predracun-1-26.pdf"]
   PDF -.->|"Web Share API"| SH["Viber / WhatsApp / mail"]
   CR["Vercel Cron (1× dnevno)"] --> V
 ```
@@ -292,16 +292,16 @@ kmUFen(km) / fenUKm(fen)   // pretvorba na rubu: forma → fen, fen → baza / f
 
 ## 11. PDF predračuna
 
-- `lib/pdf.ts` (čisto, testirano u `lib/pdf.test.ts`): `modelPdf(predracun, firma)` gradi na **serveru** (detalji predračuna) plain objekt s već formatiranim retcima, sažetkom (isti nazivi kao `<Razrada>`), imenom datoteke `Predracun-PR-2026-001.pdf` i tekstom poruke. Iznosi su oni spremljeni u bazi. Interna napomena nije u modelu.
+- `lib/pdf.ts` (čisto, testirano u `lib/pdf.test.ts`): `modelPdf(predracun, firma)` gradi na **serveru** (detalji predračuna) plain objekt s već formatiranim retcima, tablicom ugradnje, zbrojem (nazivi iz Excel predloška), imenom datoteke `Predracun-1-26.pdf` i tekstom poruke. Iznosi su oni spremljeni u bazi. Interna napomena nije u modelu.
 - PDV broj se prikazuje ako je predračun napravljen u sustavu PDV-a (snimak `pdv_u_sustavu`). Datum je `updated_at` (zadnja izmjena; kod potvrđenog je to datum potvrde).
-- `components/pdf/PredracunPdf.tsx`: `@react-pdf/renderer` dokument, A4, prema Design.md.
-- **Fontovi**: `registrirajFontove(origin)` – `Font.register` za **Poppins** (600/700, naslov i UKUPNO) i **Nunito Sans** (400/700, tekst), statični TTF iz `/fonts/` (react-pdf ne podržava variable fontove). Ugrađeni PDF fontovi nemaju č, ć, đ, š, ž. Isključeno rastavljanje riječi na slogove.
-- **Logo**: `/slike/logo/logoNoBackground.png`. URL-ovi fontova i loga su apsolutni (`location.origin`).
-- Rastavljanje: retci tablice i sažetak se ne lome (`wrap={false}`); podnožje je `fixed`, s „1 / 2" samo kad ima više stranica. Zaglavlje tablice se ne ponavlja na drugoj stranici.
+- `components/pdf/PredracunPdf.tsx`: `@react-pdf/renderer` dokument, A4, kopija Excel predloška. Širine stupaca (px), visine redaka i veličine fonta (pt) iz predloška množe se faktorom `K` (≈ 0,36) kojim Excel list „fit to page” smješta u širinu A4 između margina predloška.
+- **Fontovi**: `registrirajFontove(origin)` – **Arimo** (400/700, metrički isti kao Arial) i **Carlito** (400/700, kao Calibri), statični TTF iz `/fonts/` (react-pdf ne podržava variable fontove). Ugrađeni PDF fontovi nemaju č, ć, đ, š, ž. Isključeno rastavljanje riječi na slogove.
+- **Slike** iz predloška u `/slike/pdf/`: `logo.png` i ikone `web`, `instagram`, `whatsapp`, `viber`. URL-ovi fontova i slika su apsolutni (`location.origin`).
+- Rastavljanje: retci tablice, tablica ugradnje i blok zbroja se ne lome (`wrap={false}`); „1 / 2" dolje desno samo kad ima više stranica. Zaglavlje tablice se ne ponavlja na drugoj stranici. Kraći predračun dopunjava se praznim retcima do 6, kao u predlošku.
 - `components/pdf/PdfGumbi.tsx` (client): **Pošalji** (primarni) i **Preuzmi PDF** na vrhu akcija za otvoreni i potvrđeni predračun.
   - `@react-pdf/renderer` i dokument se učitavaju dinamičkim `import()` (predučitavanje na `pointerenter`/`pointerdown`/`focus`), a PDF se generira tek na klik.
   - Napravljeni `File` se kešira (ključ = model), pa drugi dodir ne generira ponovo.
-  - Pošalji: `navigator.canShare({ files, title, text })` → `navigator.share(...)`. Tekst: „Poštovani, u privitku je predračun PR-…" + naziv firme.
+  - Pošalji: `navigator.canShare({ files, title, text })` → `navigator.share(...)`. Tekst: „Poštovani, u privitku je predračun br. 1-26." + naziv firme.
     - `AbortError` (korisnik zatvorio izbornik) → ništa.
     - `NotAllowedError` (iOS Safari: korisnikova gesta istekne dok se PDF radi) → obavijest „PDF je spreman – dodirni Pošalji još jednom"; drugi dodir dijeli iz keša.
     - Bez dijeljenja datoteka (računalo, Firefox) → preuzimanje + obavijest „Dijeljenje nije podržano na ovom uređaju – PDF je preuzet."

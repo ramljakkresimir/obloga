@@ -21,7 +21,16 @@ const GRESKA_SPREMANJA = "Prodaja nije spremljena. Pokušajte ponovno.";
 
 /** Brza prodaja (PRD §5.6): bez kupca i dodataka, samo obloge, popust i interna napomena. */
 const shemaBrzeProdaje = shemaPodataka.refine(
-  (p) => !p.kupacIme && !p.kupacTelefon && !p.kupacMjesto && !p.ugradnja && !p.ljepilo && p.prijevoz === null,
+  // Uvjeti (način plaćanja, rok…) se ne provjeravaju: RPC brza_prodaja ih ne sprema.
+  (p) =>
+    !p.kupacIme &&
+    !p.kupacTelefon &&
+    !p.kupacMjesto &&
+    !p.kupacAdresa &&
+    !p.kupacJib &&
+    !p.ugradnja &&
+    !p.ljepilo &&
+    p.prijevoz === null,
   "Brza prodaja nema kupca ni dodataka.",
 );
 

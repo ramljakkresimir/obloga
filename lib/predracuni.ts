@@ -20,7 +20,22 @@ export const NAJVISE_KM = 99_999_999.99;
 /** numeric(12,2) za iznose stavki i zbrojeve, u feninzima. */
 const NAJVISE_IZNOS_FEN = 999_999_999_999;
 
-export const DUZINA = { kupacIme: 120, kupacTelefon: 40, kupacMjesto: 80, napomena: 1000 } as const;
+export const DUZINA = {
+  kupacIme: 120,
+  kupacTelefon: 40,
+  kupacMjesto: 80,
+  kupacAdresa: 200,
+  kupacJib: 20,
+  svrha: 200,
+  nacinPlacanja: 60,
+  napomena: 1000,
+} as const;
+
+/** Rok valjanosti predračuna u danima (smallint u bazi, check 1–365). */
+export const NAJVISE_DANA_VALJANOSTI = 365;
+
+/** Zadane vrijednosti novog predračuna (kao u Excel predlošku). */
+export const ZADANI_UVJETI = { nacinPlacanja: "gotovinsko", vrijediDana: 15 } as const;
 
 /* ---------------------------------------------------------------------------
  * Stanje uređivača (tekst polja, kako ga drži forma)
@@ -42,6 +57,13 @@ export type StanjeUredivaca = {
   kupacIme: string;
   kupacTelefon: string;
   kupacMjesto: string;
+  kupacAdresa: string;
+  kupacJib: string;
+  /** Uvjeti (idu na PDF): tekst polja. `datumIsporuke` je "YYYY-MM-DD" iz <input type="date"> ili "". */
+  svrha: string;
+  nacinPlacanja: string;
+  datumIsporuke: string;
+  vrijediDana: string;
   stavke: StavkaUredivaca[];
   /** `rucno` = korisnik je sam upisao m²; inače polje prati prijedlog (zbroj m² stavki). */
   ugradnja: { ukljucena: boolean; m2: string; rucno: boolean; cijenaM2: string };
@@ -57,6 +79,12 @@ export function prazanUredivac(): StanjeUredivaca {
     kupacIme: "",
     kupacTelefon: "",
     kupacMjesto: "",
+    kupacAdresa: "",
+    kupacJib: "",
+    svrha: "",
+    nacinPlacanja: ZADANI_UVJETI.nacinPlacanja,
+    datumIsporuke: "",
+    vrijediDana: String(ZADANI_UVJETI.vrijediDana),
     stavke: [],
     ugradnja: { ukljucena: false, m2: "", rucno: false, cijenaM2: "" },
     ljepilo: { ukljuceno: false, kom: "", cijena: "" },
@@ -79,6 +107,13 @@ export type PodaciPredracuna = {
   kupacIme: string;
   kupacTelefon: string;
   kupacMjesto: string;
+  kupacAdresa: string;
+  kupacJib: string;
+  svrha: string;
+  nacinPlacanja: string;
+  /** "YYYY-MM-DD" ili null. */
+  datumIsporuke: string | null;
+  vrijediDana: number | null;
   napomena: string;
   /** Cijene se ne šalju: server uzima snimak iz baze. */
   stavke: { artiklId: number; unos: JedinicaUnosa; kolicina: number }[];
@@ -185,10 +220,28 @@ export function procitajUredivac(s: StanjeUredivaca, predlozeniM2Ugradnje: numbe
   if ("greska" in p) greske.popust = p.greska;
   else if ("broj" in p && p.broj > 0) popust = { tip: s.popust.tip, vrijednost: p.broj };
 
+  let vrijediDana: number | null = null;
+  const dana = procitajBroj(s.vrijediDana, {
+    decimala: 0,
+    najmanje: 0,
+    veceOd: true,
+    najvise: NAJVISE_DANA_VALJANOSTI,
+    prevelik: `Najviše ${NAJVISE_DANA_VALJANOSTI} dana.`,
+  });
+  if ("greska" in dana) greske.vrijedi_dana = dana.greska;
+  else if ("broj" in dana) vrijediDana = dana.broj;
+
+  const datumIsporuke = s.datumIsporuke.trim() === "" ? null : s.datumIsporuke.trim();
+  if (datumIsporuke !== null && !jeIspravanDatum(datumIsporuke)) greske.datum_isporuke = "Upišite ispravan datum.";
+
   const duljine = [
     ["kupac_ime", s.kupacIme, DUZINA.kupacIme],
     ["kupac_telefon", s.kupacTelefon, DUZINA.kupacTelefon],
     ["kupac_mjesto", s.kupacMjesto, DUZINA.kupacMjesto],
+    ["kupac_adresa", s.kupacAdresa, DUZINA.kupacAdresa],
+    ["kupac_jib", s.kupacJib, DUZINA.kupacJib],
+    ["svrha", s.svrha, DUZINA.svrha],
+    ["nacin_placanja", s.nacinPlacanja, DUZINA.nacinPlacanja],
     ["napomena", s.napomena, DUZINA.napomena],
   ] as const;
   for (const [polje, tekst, najvise] of duljine) {
@@ -200,6 +253,12 @@ export function procitajUredivac(s: StanjeUredivaca, predlozeniM2Ugradnje: numbe
       kupacIme: s.kupacIme.trim(),
       kupacTelefon: s.kupacTelefon.trim(),
       kupacMjesto: s.kupacMjesto.trim(),
+      kupacAdresa: s.kupacAdresa.trim(),
+      kupacJib: s.kupacJib.trim(),
+      svrha: s.svrha.trim(),
+      nacinPlacanja: s.nacinPlacanja.trim(),
+      datumIsporuke: datumIsporuke !== null && jeIspravanDatum(datumIsporuke) ? datumIsporuke : null,
+      vrijediDana,
       napomena: s.napomena.trim(),
       stavke,
       ugradnja,
@@ -209,6 +268,14 @@ export function procitajUredivac(s: StanjeUredivaca, predlozeniM2Ugradnje: numbe
     },
     greske,
   };
+}
+
+/** "YYYY-MM-DD" koji postoji u kalendaru (npr. ne 2026-02-30). */
+export function jeIspravanDatum(t: string): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
+  if (!m) return false;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  return d.getUTCFullYear() === Number(m[1]) && d.getUTCMonth() === Number(m[2]) - 1 && d.getUTCDate() === Number(m[3]);
 }
 
 /** Zbroj m² stavki za prijedlog ugradnje (kao `predlozeniM2Ugradnje` u kalkulaciji), samo iz ispravnih stavki. */
@@ -341,6 +408,12 @@ export function podaciZaRpc(
     kupac_ime: podaci.kupacIme,
     kupac_telefon: podaci.kupacTelefon,
     kupac_mjesto: podaci.kupacMjesto,
+    kupac_adresa: podaci.kupacAdresa,
+    kupac_jib: podaci.kupacJib,
+    svrha: podaci.svrha,
+    nacin_placanja: podaci.nacinPlacanja,
+    datum_isporuke: podaci.datumIsporuke,
+    vrijedi_dana: podaci.vrijediDana,
     napomena: podaci.napomena,
     ugradnja_m2: podaci.ugradnja?.m2 ?? null,
     ugradnja_cijena_m2: podaci.ugradnja?.cijenaM2 ?? null,
@@ -407,6 +480,12 @@ export type SpremljeniPredracun = {
   kupac_ime: string | null;
   kupac_telefon: string | null;
   kupac_mjesto: string | null;
+  kupac_adresa: string | null;
+  kupac_jib: string | null;
+  svrha: string | null;
+  nacin_placanja: string | null;
+  datum_isporuke: string | null;
+  vrijedi_dana: number | null;
   napomena: string | null;
   ugradnja_m2: number | null;
   ugradnja_cijena_m2: number | null;
@@ -451,6 +530,12 @@ export function uredivacIzPredracuna(p: SpremljeniPredracun): StanjeUredivaca {
     kupacIme: p.kupac_ime ?? "",
     kupacTelefon: p.kupac_telefon ?? "",
     kupacMjesto: p.kupac_mjesto ?? "",
+    kupacAdresa: p.kupac_adresa ?? "",
+    kupacJib: p.kupac_jib ?? "",
+    svrha: p.svrha ?? "",
+    nacinPlacanja: p.nacin_placanja ?? "",
+    datumIsporuke: p.datum_isporuke ?? "",
+    vrijediDana: uPolje(p.vrijedi_dana, 0),
     napomena: p.napomena ?? "",
     stavke: p.stavke.map((s) => ({
       artiklId: s.artikl_id,
@@ -476,6 +561,7 @@ export type TrenutnaObloga = {
 
 /**
  * Kopiraj (PRD §5.5): iste stavke, dodaci i popust po trenutnim cijenama obloga, prazan kupac i napomena.
+ * Način plaćanja i rok valjanosti se prenose; svrha i datum isporuke ostaju prazni (vežu se uz kupca).
  * Arhivirane (ili obrisane) obloge se preskaču i vraćaju u `preskocene`.
  */
 export function uredivacIzKopije(
@@ -503,7 +589,13 @@ export function uredivacIzKopije(
     });
   }
   return {
-    stanje: { ...prazanUredivac(), stavke, ...dodaciIzSpremljenog(p) },
+    stanje: {
+      ...prazanUredivac(),
+      nacinPlacanja: p.nacin_placanja ?? ZADANI_UVJETI.nacinPlacanja,
+      vrijediDana: uPolje(p.vrijedi_dana ?? ZADANI_UVJETI.vrijediDana, 0),
+      stavke,
+      ...dodaciIzSpremljenog(p),
+    },
     preskocene,
   };
 }

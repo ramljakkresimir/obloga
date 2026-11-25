@@ -59,6 +59,40 @@ export function FormaPostavki({ postavke: p }: { postavke: Postavke }) {
             pomoc="13 znamenki."
             greska={g?.jib}
           />
+          <Polje
+            oznaka="Vlasnik"
+            name="vlasnik"
+            defaultValue={p.vlasnik ?? ""}
+            autoComplete="name"
+            maxLength={120}
+            pomoc="Samo ime i prezime. Na PDF-u ide uz naziv firme kao „vl. Ime Prezime”."
+            greska={g?.vlasnik}
+          />
+        </div>
+      </Kartica>
+
+      <Kartica naslov="Banka">
+        <div className="flex flex-col gap-4">
+          <Polje oznaka="Banka" name="banka" defaultValue={p.banka ?? ""} autoComplete="off" maxLength={120} greska={g?.banka} />
+          <Polje
+            oznaka="Transakcijski račun"
+            name="transakcijski_racun"
+            defaultValue={p.transakcijski_racun ?? ""}
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={50}
+            greska={g?.transakcijski_racun}
+          />
+        </div>
+      </Kartica>
+
+      <Kartica naslov="Web i društvene mreže">
+        <p className="-mt-2 mb-4 text-sm text-sivosmeda">Upisani tekst ide gore desno na PDF, uz ikonu (npr. „Instagram” ili „@obloga.ba”). Prazno polje se ne prikazuje.</p>
+        <div className="flex flex-col gap-4">
+          <Polje oznaka="Web" name="web" defaultValue={p.web ?? ""} autoComplete="url" maxLength={120} pomoc="npr. www.obloga.ba" greska={g?.web} />
+          <Polje oznaka="Instagram" name="instagram" defaultValue={p.instagram ?? ""} autoComplete="off" maxLength={120} greska={g?.instagram} />
+          <Polje oznaka="WhatsApp" name="whatsapp" type="tel" defaultValue={p.whatsapp ?? ""} autoComplete="off" maxLength={50} greska={g?.whatsapp} />
+          <Polje oznaka="Viber" name="viber" type="tel" defaultValue={p.viber ?? ""} autoComplete="off" maxLength={50} greska={g?.viber} />
         </div>
       </Kartica>
 

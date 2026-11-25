@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft, MapPin, Phone, User } from "lucide-react";
+import { ArrowLeft, FileText, MapPin, Phone, User } from "lucide-react";
 import { idIzParametra } from "@/lib/data/obloge";
 import { dohvatiPostavke } from "@/lib/data/postavke";
 import { dohvatiPredracun, type PredracunDetalji } from "@/lib/data/predracuni";
-import { formatDatum, formatKM, formatM2 } from "@/lib/format";
+import { brojSImenicom, formatDatum, formatKM, formatM2, OBLIK_DAN } from "@/lib/format";
 import { modelPdf } from "@/lib/pdf";
 import { iznosiSpremljenog } from "@/lib/predracuni";
 import { AkcijePredracuna } from "@/components/predracun/AkcijePredracuna";
@@ -78,6 +78,8 @@ async function Detalji({ params }: Pick<PageProps<"/predracuni/[id]">, "params">
         <Razrada iznosi={iznosi} />
       </Kartica>
 
+      <Uvjeti p={p} />
+
       {p.napomena && (
         <Kartica naslov="Interna napomena">
           <p className="whitespace-pre-wrap">{p.napomena}</p>
@@ -123,7 +125,8 @@ function Zaglavlje({ p }: { p: PredracunDetalji }) {
 }
 
 function Kupac({ p }: { p: PredracunDetalji }) {
-  if (!p.kupac_ime && !p.kupac_telefon && !p.kupac_mjesto) {
+  const adresa = [p.kupac_adresa, p.kupac_mjesto].filter(Boolean).join(", ");
+  if (!p.kupac_ime && !p.kupac_telefon && !adresa && !p.kupac_jib) {
     return (
       <Kartica naslov="Kupac">
         <p className="text-sivosmeda">Kupac nije upisan.</p>
@@ -150,13 +153,42 @@ function Kupac({ p }: { p: PredracunDetalji }) {
             </a>
           </li>
         )}
-        {p.kupac_mjesto && (
+        {adresa && (
           <li className="flex items-center gap-3">
             <MapPin aria-hidden className="size-5 shrink-0 text-drvo" />
-            {p.kupac_mjesto}
+            {adresa}
+          </li>
+        )}
+        {p.kupac_jib && (
+          <li className="flex items-center gap-3 tabular-nums">
+            <FileText aria-hidden className="size-5 shrink-0 text-drvo" />
+            JIB {p.kupac_jib}
           </li>
         )}
       </ul>
+    </Kartica>
+  );
+}
+
+/** Uvjeti s PDF-a (način plaćanja, rok, isporuka, svrha); prazni se ne prikazuju. */
+function Uvjeti({ p }: { p: PredracunDetalji }) {
+  const redovi = [
+    ["Način plaćanja", p.nacin_placanja],
+    ["Vrijedi", p.vrijedi_dana ? brojSImenicom(p.vrijedi_dana, OBLIK_DAN) : null],
+    ["Datum isporuke", p.datum_isporuke ? formatDatum(p.datum_isporuke) : null],
+    ["Svrha", p.svrha],
+  ].filter((r): r is [string, string] => Boolean(r[1]));
+  if (redovi.length === 0) return null;
+  return (
+    <Kartica naslov="Uvjeti">
+      <dl className="flex flex-col gap-2">
+        {redovi.map(([naziv, vrijednost]) => (
+          <div key={naziv} className="flex items-baseline justify-between gap-3">
+            <dt className="text-sivosmeda">{naziv}</dt>
+            <dd className="text-right font-semibold">{vrijednost}</dd>
+          </div>
+        ))}
+      </dl>
     </Kartica>
   );
 }

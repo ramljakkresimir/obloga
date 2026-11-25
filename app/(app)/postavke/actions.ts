@@ -21,6 +21,13 @@ type PoljePostavki =
   | "telefon"
   | "email"
   | "jib"
+  | "vlasnik"
+  | "banka"
+  | "transakcijski_racun"
+  | "web"
+  | "instagram"
+  | "whatsapp"
+  | "viber"
   | "pdv_broj"
   | "pdv_stopa"
   | "ljepilo_cijena";
@@ -55,6 +62,14 @@ const shemaOsnovno = z.object({
     .transform((t) => t.replace(/\s/g, ""))
     .refine((t) => t === "" || /^\d{13}$/.test(t), "JIB ima točno 13 znamenki.")
     .transform((t) => (t === "" ? null : t)),
+  // Zaglavlje PDF-a predračuna (Excel predložak).
+  vlasnik: neobavezno(120),
+  banka: neobavezno(120),
+  transakcijski_racun: neobavezno(50),
+  web: neobavezno(120),
+  instagram: neobavezno(120),
+  whatsapp: neobavezno(50),
+  viber: neobavezno(50),
   ljepilo_cijena: iznos(0, 99_999_999.99, "Cijena ne može biti negativna."),
 });
 
@@ -80,6 +95,13 @@ export async function spremiPostavke(_prethodno: StanjePostavki, formData: FormD
     telefon: tekst(formData, "telefon"),
     email: tekst(formData, "email"),
     jib: tekst(formData, "jib"),
+    vlasnik: tekst(formData, "vlasnik"),
+    banka: tekst(formData, "banka"),
+    transakcijski_racun: tekst(formData, "transakcijski_racun"),
+    web: tekst(formData, "web"),
+    instagram: tekst(formData, "instagram"),
+    whatsapp: tekst(formData, "whatsapp"),
+    viber: tekst(formData, "viber"),
     ljepilo_cijena: tekst(formData, "ljepilo_cijena"),
   });
   const pdv = uSustavuPdv

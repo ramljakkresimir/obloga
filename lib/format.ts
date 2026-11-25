@@ -66,6 +66,12 @@ export function formatDatum(d: Date | string): string {
   return `${dan}. ${mjesec}. ${godina}.`;
 }
 
+/** Datum s vodećim nulama i bez razmaka, kao u Excel predlošku predračuna → "08.10.2026.". */
+export function formatDatumPdf(d: Date | string): string {
+  const { dan, mjesec, godina } = dijeloviDatuma(d);
+  return `${String(dan).padStart(2, "0")}.${String(mjesec).padStart(2, "0")}.${godina}.`;
+}
+
 /** Kratki datum bez godine → "18. 11.". */
 export function formatDatumKratko(d: Date | string): string {
   const { dan, mjesec } = dijeloviDatuma(d);
@@ -87,3 +93,4 @@ export function brojSImenicom(n: number, [jedan, dva, pet]: readonly [string, st
 export const OBLIK_OBLOGA = ["obloga", "obloge", "obloga"] as const;
 export const OBLIK_PRODAJA = ["prodaja", "prodaje", "prodaja"] as const;
 export const OBLIK_PREDRACUN = ["predračun", "predračuna", "predračuna"] as const;
+export const OBLIK_DAN = ["dan", "dana", "dana"] as const;
