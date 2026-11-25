@@ -4,6 +4,7 @@ import { LogOut } from "lucide-react";
 import { odjava } from "@/app/prijava/actions";
 import { dohvatiVlasnika } from "@/lib/auth";
 import { dohvatiKategorije, dohvatiPostavke } from "@/lib/data/postavke";
+import { InstalacijaAplikacije } from "@/components/postavke/InstalacijaAplikacije";
 import { Kategorije } from "@/components/postavke/Kategorije";
 import { Gumb } from "@/components/ui/Gumb";
 import { Kartica } from "@/components/ui/Kartica";
@@ -25,6 +26,8 @@ export default function PostavkePage() {
       <Suspense fallback={<KosturKartice redaka={4} />}>
         <PopisKategorija />
       </Suspense>
+
+      <InstalacijaAplikacije />
 
       <Kartica naslov="Lozinka">
         <PromjenaLozinke />

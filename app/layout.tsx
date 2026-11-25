@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Nunito_Sans, Poppins } from "next/font/google";
+import { RegistracijaSW } from "@/components/pwa/RegistracijaSW";
 import "./globals.css";
 
 const nunitoSans = Nunito_Sans({
@@ -19,6 +20,14 @@ export const metadata: Metadata = {
     template: "%s · Obloga.ba",
   },
   description: "Stanje obloga, predračuni, prodaja i bilješke za Obloga.ba",
+  icons: {
+    apple: "/ikone/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Obloga",
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {
@@ -31,7 +40,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="hr" className={`${nunitoSans.variable} ${poppins.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <RegistracijaSW />
+      </body>
     </html>
   );
 }

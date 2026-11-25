@@ -394,11 +394,11 @@ Ovo **nije** dio prve verzije, ali se može dodati kasnije:
 - [ ] PDV prekidači (u sustavu; cijene uključuju PDV) i stopa (4)
 - [ ] Zadana cijena ljepila
 - [ ] Upravljanje kategorijama (22)
-- [ ] Upute za instalaciju aplikacije
+- [x] Upute za instalaciju aplikacije
 
 ### Izgled i platforma
 - [ ] Mobitel na prvom mjestu, navigacija pri dnu (20)
-- [ ] Instalacija na početni zaslon (PWA) (zadatak)
+- [x] Instalacija na početni zaslon (PWA) (zadatak)
 - [ ] Boje i stil prema brendu obloga.ba (zadatak)
 - [ ] Hrvatski jezik u aplikaciji i na PDF-u (30)
 - [ ] Folderi za logo i slike obloga (zadatak)

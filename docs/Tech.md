@@ -315,16 +315,21 @@ kmUFen(km) / fenUKm(fen)   // pretvorba na rubu: forma → fen, fen → baza / f
   - `start_url: "/"`, `display: "standalone"`,
   - `background_color` = pozadina, `theme_color` = espresso `#311212`,
   - ikone 192 i 512, plus 512 `purpose: "maskable"`.
-- **Ikone** se generiraju iz loga (`public/ikone/`). `apple-touch-icon` (180×180) ide kroz `metadata.icons.apple` u `app/layout.tsx`, a `themeColor` kroz `export const viewport`.
+- **Ikone** se generiraju iz loga (`public/ikone/`): samo znak M (bez natpisa) na bijeloj podlozi; maskable ima M unutar sigurne zone (~60 %). `app/favicon.ico` je isti znak. `apple-touch-icon` (180×180) ide kroz `metadata.icons.apple` u `app/layout.tsx`, a `themeColor` kroz `export const viewport`.
 - **`public/sw.js`**: minimalni service worker.
-  - Pri instalaciji kešira `offline.html`, logo i ikone.
+  - Pri instalaciji kešira `offline.html`, `ikone/znak.png` i `ikone/ikona-192.png` (keš `obloga-offline-vN`; kod promjene popisa povećati verziju).
   - Kod `fetch` za navigacije: mreža, a ako nje nema, `offline.html`.
   - Podaci se **ne** keširaju, aplikacija radi online.
-- `RegistracijaSW.tsx` registrira SW (`scope: '/'`, `updateViaCache: 'none'`).
+- `RegistracijaSW.tsx` registrira SW (`scope: '/'`, `updateViaCache: 'none'`) **samo u produkcijskom buildu** (`npm run build && npm start`), da ne smeta `next dev`. Nova verzija se aktivira odmah (`skipWaiting` + `clients.claim`).
+- **`public/offline.html`**: samostalna stranica (inline CSS), logo, „Nema internetske veze", gumb „Pokušaj ponovno"; sama se osvježi na događaj `online`.
 - **Headeri** u `next.config.ts` prema vodiču:
   - `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`,
-  - za `/sw.js`: `Cache-Control: no-cache` i ispravan `Content-Type`.
-- **iPhone**: `IosUputa.tsx` prikazuje traku „Dodirnite Dijeli → Dodaj na početni zaslon" samo na iOS-u kad aplikacija nije instalirana (`display-mode: standalone`). Može se zatvoriti, a zatvaranje se pamti u `localStorage`.
+  - `Permissions-Policy: camera=(self), microphone=(), geolocation=(), browsing-topics=()` (kamera za fotografiranje obloga),
+  - `Strict-Transport-Security: max-age=63072000; includeSubDomains`,
+  - za `/sw.js`: `Cache-Control: no-cache, no-store, must-revalidate`, `Content-Type: application/javascript` i `Content-Security-Policy: default-src 'self'; script-src 'self'`.
+  - CSP za cijelu aplikaciju se namjerno ne postavlja u prvoj verziji.
+- **iPhone**: `IosUputa.tsx` prikazuje traku „Dodirnite Dijeli → Dodaj na početni zaslon" samo na iOS-u kad aplikacija nije instalirana (`display-mode: standalone`). Prikazuje se na vrhu sadržaja u `app/(app)/layout.tsx`. Može se zatvoriti, a zatvaranje se pamti u `localStorage` (`ios-uputa-zatvorena`).
+- **Postavke**: kartica „Instalacija aplikacije" (`components/postavke/InstalacijaAplikacije.tsx`) s uputama za iPhone i Android.
 - Za instalaciju je potreban **HTTPS**: Vercel ga ima automatski, a lokalno se koristi `next dev --experimental-https`.
 
 ## 13. Dizajn sustav u kodu

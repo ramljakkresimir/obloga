@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="hr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#311212" />
+    <title>Nema internetske veze · Obloga.ba</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        min-height: 100dvh;
+        background: #fbf8f4;
+        color: #2a1f1d;
+        font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      .traka {
+        height: 4px;
+        background: linear-gradient(to right, #311212 0 20%, #553c3c 20% 40%, #8f6848 40% 60%, #eeb86b 60% 80%, #f4991a 80% 100%);
+      }
+      main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        padding: 24px 24px calc(24px + env(safe-area-inset-bottom));
+        text-align: center;
+      }
+      img { width: 96px; height: auto; }
+      h1 { margin: 8px 0 0; font-size: 24px; line-height: 32px; font-weight: 700; color: #311212; }
+      p { margin: 0; max-width: 320px; color: #7a6966; }
+      button {
+        min-height: 48px;
+        margin-top: 8px;
+        padding: 0 24px;
+        border: 0;
+        border-radius: 12px;
+        background: #311212;
+        color: #fff;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      button:hover { background: #553c3c; }
+      button:focus-visible { outline: 2px solid #f4991a; outline-offset: 2px; }
+    </style>
+  </head>
+  <body>
+    <div class="traka"></div>
+    <main>
+      <img src="/ikone/znak.png" alt="Obloga.ba" width="96" height="96" />
+      <h1>Nema internetske veze</h1>
+      <p>Aplikacija treba internet za rad. Provjerite Wi&#8209;Fi ili mobilne podatke i pokušajte ponovno.</p>
+      <button type="button" id="ponovno">Pokušaj ponovno</button>
+    </main>
+    <script>
+      document.getElementById("ponovno").addEventListener("click", function () {
+        location.reload();
+      });
+      // Kad se veza vrati, stranica se sama osvježi.
+      window.addEventListener("online", function () {
+        location.reload();
+      });
+    </script>
+  </body>
+</html>
