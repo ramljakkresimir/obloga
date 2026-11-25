@@ -138,15 +138,22 @@ export function UredivacPredracuna({
 
   const dodane = useMemo(() => new Set(stanje.stavke.map((s) => s.artiklId)), [stanje.stavke]);
 
-  /** Brza prodaja: komadi koji se skidaju sa stanja (iz izračuna) i manjak prema trenutnom stanju obloga. */
+  /** Trenutno stanje aktivnih obloga (komadi). Arhivirane obloge nisu u mapi: stanje im je nepoznato. */
+  const naStanju = useMemo(() => new Map(obloge.map((o) => [o.id, o.stanje])), [obloge]);
+
+  /**
+   * Komadi po stavci (iz izračuna) i manjak prema trenutnom stanju obloga.
+   * Brza prodaja: skidanje sa stanja u potvrdi. Predračun: upozorenje prije spremanja.
+   */
   const skidanje = useMemo(() => {
     const stavke = stanje.stavke.flatMap((s) => {
       const r = izracun.poStavci.get(s.artiklId);
       return r ? [{ artiklId: s.artiklId, naziv: s.naziv, komada: r.komada }] : [];
     });
-    const naStanju = new Map(obloge.map((o) => [o.id, o.stanje]));
-    return { stavke, nedostaje: manjak(stavke, naStanju) };
-  }, [stanje.stavke, izracun.poStavci, obloge]);
+    // manjak() nepoznato stanje računa kao 0, pa se arhivirane obloge izostavljaju da ne javljaju lažni manjak.
+    const poznate = stavke.filter((s) => naStanju.has(s.artiklId));
+    return { stavke, nedostaje: manjak(poznate, naStanju) };
+  }, [stanje.stavke, izracun.poStavci, naStanju]);
 
   function promijeni(promjena: Partial<StanjeUredivaca>) {
     setGreska(null);
@@ -200,14 +207,22 @@ export function UredivacPredracuna({
       return;
     }
     setGreska(null);
-    if (brzaProdaja) {
+    // Brza prodaja uvijek traži potvrdu; predračun samo kad neke obloge nema dovoljno na stanju.
+    if (brzaProdaja || skidanje.nedostaje.length > 0) {
       setPotvrdaOtvorena(true);
       return;
     }
+    spremiNaServer();
+  }
+
+  function spremiNaServer() {
     startSpremanja(async () => {
       // Uspjeh završava redirectom na detalje predračuna s obaviješću.
       const rezultat = await spremiPredracun(predracunId, izracun.podaci, kopijaOd);
-      if (rezultat?.greska) setGreska(rezultat.greska);
+      if (rezultat?.greska) {
+        setPotvrdaOtvorena(false);
+        setGreska(rezultat.greska);
+      }
     });
   }
 
@@ -296,6 +311,7 @@ export function UredivacPredracuna({
                   stavka={s}
                   rezultat={izracun.poStavci.get(s.artiklId) ?? null}
                   greska={greskaPolja(kljucStavke(s.artiklId), s.kolicina)}
+                  naStanju={naStanju.get(s.artiklId) ?? null}
                   onPromjena={promijeniStavku}
                   onUkloni={() => ukloniStavku(s.artiklId)}
                   disabled={sprema}
@@ -385,6 +401,31 @@ export function UredivacPredracuna({
             <div className="flex flex-col gap-2">
               <Gumb punaSirina ucitavanje={sprema} onClick={potvrdiProdaju}>
                 {skidanje.nedostaje.length > 0 ? "Svejedno potvrdi" : "Potvrdi"}
+              </Gumb>
+              <Gumb varijanta="tekstualni" punaSirina disabled={sprema} onClick={() => setPotvrdaOtvorena(false)}>
+                Odustani
+              </Gumb>
+            </div>
+          </div>
+        </DonjiList>
+      )}
+
+      {!brzaProdaja && (
+        <DonjiList
+          otvoren={potvrdaOtvorena}
+          onZatvori={() => {
+            if (!sprema) setPotvrdaOtvorena(false);
+          }}
+          naslov="Spremiti predračun?"
+        >
+          <div className="flex flex-col gap-4">
+            <UpozorenjeManjka
+              nedostaje={skidanje.nedostaje}
+              napomena="Predračun se može spremiti. Stanje se mijenja tek kad se predračun potvrdi."
+            />
+            <div className="flex flex-col gap-2">
+              <Gumb punaSirina ucitavanje={sprema} onClick={spremiNaServer}>
+                Svejedno spremi
               </Gumb>
               <Gumb varijanta="tekstualni" punaSirina disabled={sprema} onClick={() => setPotvrdaOtvorena(false)}>
                 Odustani

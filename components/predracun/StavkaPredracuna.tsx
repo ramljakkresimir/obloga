@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { Trash2, TriangleAlert } from "lucide-react";
 import type { StavkaRezultat } from "@/lib/kalkulacija";
 import { fenUKm } from "@/lib/kalkulacija";
 import { formatKM, formatM2 } from "@/lib/format";
@@ -14,6 +14,8 @@ type Props = {
   /** Izračun stavke; null dok količina nije ispravno upisana. */
   rezultat: StavkaRezultat | null;
   greska?: string;
+  /** Trenutno stanje obloge u komadima; null = nepoznato (npr. arhivirana obloga), ne prikazuje se. */
+  naStanju?: number | null;
   onPromjena: (stavka: StavkaUredivaca) => void;
   onUkloni: () => void;
   disabled?: boolean;
@@ -23,8 +25,10 @@ type Props = {
  * Stavka u uređivaču: sličica, naziv, cijena/kom, prekidač m² | kom, količina i izračun ispod
  * („= 28 kom · 12,54 m² · 616,00 KM"). Polje količine ima data-kolicina={artiklId} za fokus nakon dodavanja.
  */
-export function StavkaPredracuna({ stavka: s, rezultat, greska, onPromjena, onUkloni, disabled }: Props) {
+export function StavkaPredracuna({ stavka: s, rezultat, greska, naStanju = null, onPromjena, onUkloni, disabled }: Props) {
   const imaM2 = s.m2PoKomadu != null;
+  // Isto pravilo kao manjak() u lib/predracuni.ts: negativno stanje znači da nema ništa.
+  const nedostaje = naStanju !== null && rezultat && rezultat.komada > naStanju ? rezultat.komada - Math.max(naStanju, 0) : 0;
 
   /** Kod promjene jedinice količina se pretvara (12,5 m² → 28 kom; 28 kom → 12,54 m²). */
   function promijeniJedinicu(unos: "m2" | "kom") {
@@ -98,6 +102,19 @@ export function StavkaPredracuna({ stavka: s, rezultat, greska, onPromjena, onUk
           "Upišite količinu u m² ili komadima."
         )}
       </p>
+
+      {naStanju !== null && (
+        <p
+          className={`-mt-2 flex items-center gap-1.5 text-sm tabular-nums ${nedostaje > 0 ? "font-semibold text-greska" : "text-sivosmeda"}`}
+          aria-live="polite"
+        >
+          {nedostaje > 0 && <TriangleAlert aria-hidden className="size-4 shrink-0" />}
+          <span>
+            Na stanju: {naStanju} kom
+            {nedostaje > 0 && <> · nedostaje {nedostaje} kom</>}
+          </span>
+        </p>
+      )}
     </li>
   );
 }

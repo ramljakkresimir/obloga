@@ -28,7 +28,14 @@ export function ListaPromjene({
 }
 
 /** Upozorenje o manjku prije skidanja sa stanja (PRD §5.5 Potvrda). Bez manjka ne prikazuje ništa. */
-export function UpozorenjeManjka({ nedostaje }: { nedostaje: Manjak[] }) {
+export function UpozorenjeManjka({
+  nedostaje,
+  napomena = "Stanje će otići u minus.",
+}: {
+  nedostaje: Manjak[];
+  /** Rečenica ispod popisa (spremanje predračuna ne mijenja stanje, potvrda mijenja). */
+  napomena?: string;
+}) {
   if (nedostaje.length === 0) return null;
   return (
     <div role="alert" className="flex flex-col gap-2 rounded-[var(--radius-polje)] bg-greska-pozadina px-4 py-3 text-greska">
@@ -43,7 +50,7 @@ export function UpozorenjeManjka({ nedostaje }: { nedostaje: Manjak[] }) {
           </li>
         ))}
       </ul>
-      <p className="text-sm">Stanje će otići u minus.</p>
+      <p className="text-sm">{napomena}</p>
     </div>
   );
 }
