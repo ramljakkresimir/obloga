@@ -23,7 +23,8 @@ function primjer(pdv: PdvPostavke): UlazKalkulacije {
 describe("izracunaj – primjer iz PRD §6.4", () => {
   it("stavke, dodaci, međuzbroj i popust", () => {
     const r = izracunaj(primjer(BEZ_PDV));
-    expect(r.stavke).toEqual([{ komada: 28, m2: 12.5, iznosFen: 61600 }]);
+    expect(r.stavke).toEqual([{ komada: 28, m2: 12.5, brutoFen: 61600, popustFen: 0, popustOgranicen: false, iznosFen: 61600 }]);
+    expect(r.popustStavkiFen).toBe(0);
     expect(r.stavkeFen).toBe(61600);
     expect(r.ugradnjaFen).toBe(18750);
     expect(r.ljepiloFen).toBe(4800);
@@ -72,12 +73,12 @@ describe("izracunaj – komadi", () => {
   });
 
   it("unos u komadima: m² samo informativno", () => {
-    expect(jednaStavka({ ...WPC, unos: "kom", kolicina: 3 })).toEqual({ komada: 3, m2: 1.344, iznosFen: 6600 });
+    expect(jednaStavka({ ...WPC, unos: "kom", kolicina: 3 })).toMatchObject({ komada: 3, m2: 1.344, iznosFen: 6600 });
   });
 
   it("obloga bez m² po komadu u komadima: m² je null", () => {
     const r = izracunaj({ stavke: [{ cijenaKomFen: 4500, m2PoKomadu: null, unos: "kom", kolicina: 2 }], pdv: BEZ_PDV });
-    expect(r.stavke[0]).toEqual({ komada: 2, m2: null, iznosFen: 9000 });
+    expect(r.stavke[0]).toMatchObject({ komada: 2, m2: null, iznosFen: 9000 });
     expect(r.predlozeniM2Ugradnje).toBe(0);
   });
 });
@@ -140,6 +141,53 @@ describe("izracunaj – popust", () => {
     const r = izracunaj({ stavke, pdv: BEZ_PDV });
     expect(r.popustFen).toBe(0);
     expect(r.ukupnoFen).toBe(22000);
+  });
+});
+
+describe("izracunaj – popust stavke", () => {
+  const wpc10 = { ...WPC, unos: "kom" as const, kolicina: 10 }; // 220,00 KM
+  const pvc = { cijenaKomFen: 4500, m2PoKomadu: null, unos: "kom" as const, kolicina: 2 }; // 90,00 KM
+
+  it("postotak na stavku: iznos nakon popusta ulazi u zbroj", () => {
+    const r = izracunaj({ stavke: [{ ...wpc10, popust: { tip: "posto", vrijednost: 10 } }, pvc], pdv: BEZ_PDV });
+    expect(r.stavke[0]).toMatchObject({ brutoFen: 22000, popustFen: 2200, iznosFen: 19800, popustOgranicen: false });
+    expect(r.stavke[1]).toMatchObject({ brutoFen: 9000, popustFen: 0, iznosFen: 9000 });
+    expect(r.stavkeFen).toBe(28800);
+    expect(r.popustStavkiFen).toBe(2200);
+    expect(r.ukupnoFen).toBe(28800);
+  });
+
+  it("KM na cijelu stavku, pola feninga naviše za postotak", () => {
+    const km = izracunaj({ stavke: [{ ...wpc10, popust: { tip: "km", vrijednost: 5.5 } }], pdv: BEZ_PDV });
+    expect(km.stavke[0]).toMatchObject({ popustFen: 550, iznosFen: 21450 });
+    // 3 × 0,15 KM = 45 feninga; 10 % = 4,5 feninga → 5 (pola naviše)
+    const posto = izracunaj({ stavke: [{ cijenaKomFen: 15, m2PoKomadu: null, unos: "kom", kolicina: 3, popust: { tip: "posto", vrijednost: 10 } }], pdv: BEZ_PDV });
+    expect(posto.stavke[0].popustFen).toBe(5); // 4,5 → 5
+  });
+
+  it("popust veći od stavke se ograniči na stavku i označi", () => {
+    const r = izracunaj({ stavke: [{ ...wpc10, popust: { tip: "km", vrijednost: 300 } }, pvc], pdv: BEZ_PDV });
+    expect(r.stavke[0]).toMatchObject({ popustFen: 22000, iznosFen: 0, popustOgranicen: true });
+    expect(r.ukupnoFen).toBe(9000);
+  });
+
+  it("ukupni popust se računa na zbroj nakon popusta stavki, pa PDV", () => {
+    const r = izracunaj({
+      stavke: [{ ...wpc10, popust: { tip: "posto", vrijednost: 10 } }, pvc],
+      ljepilo: { kom: 2, cijenaFen: 1000 },
+      popust: { tip: "posto", vrijednost: 5 },
+      pdv: NETO,
+    });
+    expect(r.medjuzbrojFen).toBe(30800); // 198 + 90 + 20
+    expect(r.popustFen).toBe(1540);
+    expect(r.nakonPopustaFen).toBe(29260);
+    expect(r.pdvFen).toBe(4974); // 17 % od 292,60 = 49,742
+    expect(r.ukupnoFen).toBe(34234);
+  });
+
+  it("neispravan popust stavke baca grešku s oznakom stavke", () => {
+    expect(() => izracunaj({ stavke: [{ ...wpc10, popust: { tip: "posto", vrijednost: 101 } }], pdv: BEZ_PDV })).toThrow(/Stavka 1: popust/);
+    expect(() => izracunaj({ stavke: [{ ...wpc10, popust: { tip: "km", vrijednost: -1 } }], pdv: BEZ_PDV })).toThrow(/Stavka 1: popust/);
   });
 });
 

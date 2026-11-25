@@ -114,7 +114,18 @@ export async function dohvatiOtvorenePredracune(): Promise<ZbrojOtvorenih> {
 
 export type StavkaDetalja = Pick<
   Tables<"predracun_stavke">,
-  "id" | "artikl_id" | "naziv" | "cijena_kom" | "m2_po_komadu" | "unos" | "unesena_m2" | "komada" | "iznos"
+  | "id"
+  | "artikl_id"
+  | "naziv"
+  | "cijena_kom"
+  | "m2_po_komadu"
+  | "unos"
+  | "unesena_m2"
+  | "komada"
+  | "popust_tip"
+  | "popust_vrijednost"
+  | "popust_iznos"
+  | "iznos"
 > & {
   slika: string | null;
   /** Trenutno stanje obloge (za upozorenje o manjku kod potvrde). */
@@ -136,7 +147,7 @@ export const dohvatiPredracun = cache(async (id: number): Promise<PredracunDetal
   const { data, error } = await supabase
     .from("predracuni")
     .select(
-      "*, vlasnici(ime), predracun_stavke(id, redoslijed, artikl_id, naziv, cijena_kom, m2_po_komadu, unos, unesena_m2, komada, iznos, artikli(slika, stanje, aktivan))",
+      "*, vlasnici(ime), predracun_stavke(id, redoslijed, artikl_id, naziv, cijena_kom, m2_po_komadu, unos, unesena_m2, komada, popust_tip, popust_vrijednost, popust_iznos, iznos, artikli(slika, stanje, aktivan))",
     )
     .eq("id", id)
     .order("redoslijed", { referencedTable: "predracun_stavke" })
@@ -193,6 +204,8 @@ export function uSpremljeni(p: PredracunDetalji): SpremljeniPredracun {
       unos: s.unos,
       unesena_m2: s.unesena_m2,
       komada: s.komada,
+      popust_tip: s.popust_tip,
+      popust_vrijednost: s.popust_vrijednost,
       slika: s.slika,
     })),
   };

@@ -49,6 +49,9 @@ function primjer(izmjene: Partial<PredracunZaPdf> = {}): PredracunZaPdf {
         unos: "m2",
         unesena_m2: 12.5,
         komada: 28,
+        popust_tip: null,
+        popust_vrijednost: null,
+        popust_iznos: 0,
         slika: null,
         iznos: 616,
       },
@@ -131,10 +134,10 @@ describe("modelPdf", () => {
           naziv: "WPC panel 16×280 – Svijetli hrast",
           kolicina: "28 (12,5 m²)",
           cijena: "22,00 KM",
-          popust: "5%",
+          popust: "",
           iznos: "616,00 KM",
         },
-        { rb: "2.", naziv: "Ljepilo", kolicina: "4", cijena: "12,00 KM", popust: "5%", iznos: "48,00 KM" },
+        { rb: "2.", naziv: "Ljepilo", kolicina: "4", cijena: "12,00 KM", popust: "", iznos: "48,00 KM" },
       ],
       ugradnja: { rb: "1.", naziv: "Ugradnja", m2: "12,5", cijenaM2: "15,00 KM", iznos: "187,50 KM" },
       zbroj: [
@@ -168,6 +171,27 @@ describe("modelPdf", () => {
     expect(m.firma.retci).not.toContain("PDV broj: 200000000000");
     expect(m.napomenaPdv).toBe("PDV uračunat u cijene");
     expect(m.izjavaPdv).toBe(IZJAVA_IZVAN_PDV);
+  });
+
+  it("popust stavke: u stupcu Popust %, Vrijednost nakon popusta; ukupni popust samo u zbroju", () => {
+    const wpc = primjer().stavke[0];
+    // 28 × 22 = 616; −10 % = 554,40. Druga stavka 3 × 22 = 66; −6 KM = 60. Materijal = 614,40 + ljepilo 48.
+    const m = modelPdf(
+      primjer({
+        stavke: [
+          { ...wpc, popust_tip: "posto", popust_vrijednost: 10, popust_iznos: 61.6, iznos: 554.4 },
+          { ...wpc, artikl_id: 8, naziv: "PVC panel", unos: "kom", unesena_m2: null, komada: 3, popust_tip: "km", popust_vrijednost: 6, popust_iznos: 6, iznos: 60 },
+        ],
+      }),
+      FIRMA,
+    );
+    expect(m.retci.map((r) => [r.popust, r.iznos])).toEqual([
+      ["10%", "554,40 KM"],
+      ["6,00 KM", "60,00 KM"],
+      ["", "48,00 KM"],
+    ]);
+    expect(m.zbroj[0]).toEqual({ naziv: "Ukupna cijena materijala:", iznos: "662,40 KM" });
+    expect(m.zbroj).toContainEqual({ naziv: "Popust 5%:", iznos: "−43,83 KM" });
   });
 
   it("popust u KM: stupac Popust % ostaje prazan, iznos je u zbroju", () => {

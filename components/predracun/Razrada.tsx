@@ -14,6 +14,12 @@ export function Razrada({ iznosi: r, bezUkupno }: { iznosi: IznosiRazrade; bezUk
   return (
     <dl className="flex flex-col gap-1.5 tabular-nums">
       <Red naziv="Obloge" iznos={r.stavke} />
+      {r.popustStavki > 0 && (
+        <div className="-mt-1 flex items-baseline justify-between gap-3 text-sm text-sivosmeda">
+          <dt>od toga popust na stavke</dt>
+          <dd className="text-uspjeh">{formatKM(-r.popustStavki)}</dd>
+        </div>
+      )}
       {r.ugradnja !== null && <Red naziv="Ugradnja" iznos={r.ugradnja} />}
       {r.ljepilo !== null && <Red naziv="Ljepilo" iznos={r.ljepilo} />}
       {r.prijevoz !== null && <Red naziv="Prijevoz" iznos={r.prijevoz} />}
@@ -21,7 +27,7 @@ export function Razrada({ iznosi: r, bezUkupno }: { iznosi: IznosiRazrade; bezUk
       {r.popust > 0 && (
         <>
           <Red
-            naziv={r.popustPosto !== null ? `Popust ${formatBroj(r.popustPosto)} %` : "Popust"}
+            naziv={`${r.popustStavki > 0 ? "Ukupni popust" : "Popust"}${r.popustPosto !== null ? ` ${formatBroj(r.popustPosto)} %` : ""}`}
             iznos={-r.popust}
           />
           {r.uSustavuPdv && <Red naziv="Iznos nakon popusta" iznos={nakonPopusta} />}

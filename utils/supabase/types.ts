@@ -287,6 +287,9 @@ export type Database = {
           komada: number
           m2_po_komadu: number | null
           naziv: string
+          popust_iznos: number
+          popust_tip: Database["public"]["Enums"]["tip_popusta"] | null
+          popust_vrijednost: number | null
           predracun_id: number
           redoslijed: number
           unesena_m2: number | null
@@ -300,6 +303,9 @@ export type Database = {
           komada: number
           m2_po_komadu?: number | null
           naziv: string
+          popust_iznos?: number
+          popust_tip?: Database["public"]["Enums"]["tip_popusta"] | null
+          popust_vrijednost?: number | null
           predracun_id: number
           redoslijed: number
           unesena_m2?: number | null
@@ -313,6 +319,9 @@ export type Database = {
           komada?: number
           m2_po_komadu?: number | null
           naziv?: string
+          popust_iznos?: number
+          popust_tip?: Database["public"]["Enums"]["tip_popusta"] | null
+          popust_vrijednost?: number | null
           predracun_id?: number
           redoslijed?: number
           unesena_m2?: number | null

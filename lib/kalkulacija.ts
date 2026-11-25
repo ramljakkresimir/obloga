@@ -13,7 +13,11 @@ export type StavkaUlaz = {
   unos: JedinicaUnosa;
   /** m² (do 2 decimale) ili broj komada (cijeli broj), ovisno o `unos`. */
   kolicina: number;
+  /** Popust stavke: posto 0–100 ili KM na cijelu stavku (ne veći od iznosa stavke). */
+  popust?: Popust;
 };
+
+export type Popust = { tip: "posto" | "km"; vrijednost: number };
 
 export type PdvPostavke = {
   uSustavu: boolean;
@@ -30,7 +34,7 @@ export type UlazKalkulacije = {
   ljepilo?: { kom: number; cijenaFen: number };
   prijevozFen?: number;
   /** posto: 0–100 (do 2 decimale); km: iznos u KM (do 2 decimale), kao `popust_vrijednost` u bazi. */
-  popust?: { tip: "posto" | "km"; vrijednost: number };
+  popust?: Popust;
   pdv: PdvPostavke;
 };
 
@@ -38,12 +42,21 @@ export type StavkaRezultat = {
   komada: number;
   /** Upisani m², ili komada × m² po komadu za unos u komadima; null bez m² po komadu. */
   m2: number | null;
+  /** Komada × cijena, prije popusta stavke. */
+  brutoFen: number;
+  popustFen: number;
+  /** true ako je traženi popust stavke bio veći od njenog iznosa pa je smanjen. */
+  popustOgranicen: boolean;
+  /** Iznos stavke nakon njenog popusta (ulazi u zbroj). */
   iznosFen: number;
 };
 
 export type RezultatKalkulacije = {
   stavke: StavkaRezultat[];
+  /** Zbroj stavki nakon popusta stavki. */
   stavkeFen: number;
+  /** Zbroj popusta stavki (već oduzet u `stavkeFen`). */
+  popustStavkiFen: number;
   ugradnjaFen: number;
   ljepiloFen: number;
   prijevozFen: number;
@@ -99,9 +112,12 @@ export function izracunaj(ulaz: UlazKalkulacije): RezultatKalkulacije {
       throw new Error(`${oznaka}: nepoznata jedinica unosa.`);
     }
 
-    return { komada, m2, iznosFen: komada * s.cijenaKomFen };
+    const brutoFen = komada * s.cijenaKomFen;
+    const { popustFen, popustOgranicen } = popustNa(brutoFen, s.popust, `${oznaka}: popust`);
+    return { komada, m2, brutoFen, popustFen, popustOgranicen, iznosFen: brutoFen - popustFen };
   });
   const stavkeFen = zbroj(stavke.map((s) => s.iznosFen));
+  const popustStavkiFen = zbroj(stavke.map((s) => s.popustFen));
 
   // 2. Dodaci
   let ugradnjaFen = 0;
@@ -129,23 +145,8 @@ export function izracunaj(ulaz: UlazKalkulacije): RezultatKalkulacije {
   // 3. Međuzbroj
   const medjuzbrojFen = stavkeFen + dodaciFen;
 
-  // 4. Popust (ne veći od međuzbroja)
-  let trazeniPopustFen = 0;
-  if (ulaz.popust) {
-    const { tip, vrijednost } = ulaz.popust;
-    konacan(vrijednost, "Popust");
-    if (vrijednost < 0) throw new Error("Popust ne može biti negativan.");
-    if (tip === "posto") {
-      if (vrijednost > 100) throw new Error("Popust u postocima ne može biti veći od 100 %.");
-      trazeniPopustFen = podijeliZaokruzi(medjuzbrojFen * Math.round(vrijednost * 100), 10_000);
-    } else if (tip === "km") {
-      trazeniPopustFen = kmUFen(vrijednost);
-    } else {
-      throw new Error("Nepoznata vrsta popusta.");
-    }
-  }
-  const popustOgranicen = trazeniPopustFen > medjuzbrojFen;
-  const popustFen = Math.min(trazeniPopustFen, medjuzbrojFen);
+  // 4. Ukupni popust (na međuzbroj nakon popusta stavki, ne veći od njega)
+  const { popustFen, popustOgranicen } = popustNa(medjuzbrojFen, ulaz.popust, "Popust");
 
   // 5. Iznos nakon popusta
   const nakonPopustaFen = medjuzbrojFen - popustFen;
@@ -175,6 +176,7 @@ export function izracunaj(ulaz: UlazKalkulacije): RezultatKalkulacije {
   return {
     stavke,
     stavkeFen,
+    popustStavkiFen,
     ugradnjaFen,
     ljepiloFen,
     prijevozFen,
@@ -192,6 +194,24 @@ export function izracunaj(ulaz: UlazKalkulacije): RezultatKalkulacije {
 
 // ---------------------------------------------------------------------------
 // Pomoćne funkcije
+
+/** Popust (% ili KM) na iznos, ograničen na taj iznos. Isto pravilo za stavku i za ukupni popust. */
+function popustNa(iznosFen: number, popust: Popust | undefined, naziv: string): { popustFen: number; popustOgranicen: boolean } {
+  if (!popust) return { popustFen: 0, popustOgranicen: false };
+  const { tip, vrijednost } = popust;
+  konacan(vrijednost, naziv);
+  if (vrijednost < 0) throw new Error(`${naziv} ne može biti negativan.`);
+  let trazeniFen: number;
+  if (tip === "posto") {
+    if (vrijednost > 100) throw new Error(`${naziv} u postocima ne može biti veći od 100 %.`);
+    trazeniFen = podijeliZaokruzi(iznosFen * Math.round(vrijednost * 100), 10_000);
+  } else if (tip === "km") {
+    trazeniFen = kmUFen(vrijednost);
+  } else {
+    throw new Error("Nepoznata vrsta popusta.");
+  }
+  return { popustFen: Math.min(trazeniFen, iznosFen), popustOgranicen: trazeniFen > iznosFen };
+}
 
 /** a / b zaokruženo pola naviše, za cijele a ≥ 0 i b > 0. */
 function podijeliZaokruzi(a: number, b: number): number {

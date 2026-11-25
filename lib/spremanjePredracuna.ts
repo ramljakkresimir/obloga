@@ -30,6 +30,12 @@ const km = (najvise = NAJVISE_KM) =>
 
 const tekst = (najvise: number) => z.string().trim().max(najvise, `Najviše ${najvise} znakova.`);
 
+/** Popust u % (0–100) ili KM; isto pravilo za ukupni popust i popust stavke. */
+const popust = z
+  .object({ tip: z.enum(["posto", "km"]), vrijednost: km() })
+  .refine((p) => p.tip === "km" || p.vrijednost <= 100, "Popust može biti najviše 100 %.")
+  .nullable();
+
 export const shemaPodataka = z.object({
   kupacIme: tekst(DUZINA.kupacIme),
   kupacTelefon: tekst(DUZINA.kupacTelefon),
@@ -48,6 +54,7 @@ export const shemaPodataka = z.object({
           artiklId: zId,
           unos: z.enum(["m2", "kom"]),
           kolicina: z.number().finite().positive("Količina mora biti veća od 0."),
+          popust,
         })
         .refine(
           (s) =>
@@ -68,10 +75,7 @@ export const shemaPodataka = z.object({
     .nullable(),
   ljepilo: z.object({ kom: z.number().int().positive().max(NAJVISE_KOMADA), cijena: km() }).nullable(),
   prijevoz: km().nullable(),
-  popust: z
-    .object({ tip: z.enum(["posto", "km"]), vrijednost: km() })
-    .refine((p) => p.tip === "km" || p.vrijednost <= 100, "Popust može biti najviše 100 %.")
-    .nullable(),
+  popust,
 });
 
 /* ---------------------------------------------------------------------------

@@ -91,8 +91,24 @@ export function FormaPostavki({ postavke: p }: { postavke: Postavke }) {
         <div className="flex flex-col gap-4">
           <Polje oznaka="Web" name="web" defaultValue={p.web ?? ""} autoComplete="url" maxLength={120} pomoc="npr. www.obloga.ba" greska={g?.web} />
           <Polje oznaka="Instagram" name="instagram" defaultValue={p.instagram ?? ""} autoComplete="off" maxLength={120} greska={g?.instagram} />
-          <Polje oznaka="WhatsApp" name="whatsapp" type="tel" defaultValue={p.whatsapp ?? ""} autoComplete="off" maxLength={50} greska={g?.whatsapp} />
-          <Polje oznaka="Viber" name="viber" type="tel" defaultValue={p.viber ?? ""} autoComplete="off" maxLength={50} greska={g?.viber} />
+          <Polje
+            oznaka="WhatsApp"
+            name="whatsapp"
+            defaultValue={p.whatsapp ?? ""}
+            autoComplete="off"
+            maxLength={50}
+            pomoc="Tekst ili broj, npr. WhatsApp ili 063 766 063."
+            greska={g?.whatsapp}
+          />
+          <Polje
+            oznaka="Viber"
+            name="viber"
+            defaultValue={p.viber ?? ""}
+            autoComplete="off"
+            maxLength={50}
+            pomoc="Tekst ili broj, npr. Viber ili 063 766 063."
+            greska={g?.viber}
+          />
         </div>
       </Kartica>
 

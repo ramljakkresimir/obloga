@@ -3,10 +3,24 @@
 //
 // Iznosi u uređivaču i bazi su u KM (npr. 22.5); kalkulacija interno radi u feninzima.
 
-import { fenUKm, izracunaj, kmUFen, type JedinicaUnosa, type PdvPostavke, type RezultatKalkulacije, type UlazKalkulacije } from "./kalkulacija";
+import {
+  fenUKm,
+  izracunaj,
+  kmUFen,
+  type JedinicaUnosa,
+  type PdvPostavke,
+  type Popust,
+  type RezultatKalkulacije,
+  type UlazKalkulacije,
+} from "./kalkulacija";
 import { formatBroj, parseBroj } from "./format";
 
-export type { JedinicaUnosa, PdvPostavke };
+export type { JedinicaUnosa, PdvPostavke, Popust };
+
+/** Polje popusta u uređivaču (ukupni i na stavci). Prazna vrijednost = bez popusta. */
+export type PoljePopusta = { tip: "posto" | "km"; vrijednost: string };
+
+export const prazanPopust = (): PoljePopusta => ({ tip: "posto", vrijednost: "" });
 
 /* ---------------------------------------------------------------------------
  * Granice (kao u bazi: numeric(10,2) za cijene i m², integer za komade)
@@ -51,6 +65,8 @@ export type StavkaUredivaca = {
   unos: JedinicaUnosa;
   /** Tekst polja količine ("12,5" m² ili "28" kom). */
   kolicina: string;
+  /** Popust na ovu stavku (samo obloge). */
+  popust: PoljePopusta;
 };
 
 export type StanjeUredivaca = {
@@ -69,8 +85,8 @@ export type StanjeUredivaca = {
   ugradnja: { ukljucena: boolean; m2: string; rucno: boolean; cijenaM2: string };
   ljepilo: { ukljuceno: boolean; kom: string; cijena: string };
   prijevoz: { ukljucen: boolean; iznos: string };
-  /** Prazna vrijednost = bez popusta. */
-  popust: { tip: "posto" | "km"; vrijednost: string };
+  /** Ukupni popust (na zbroj nakon popusta stavki). Prazna vrijednost = bez popusta. */
+  popust: PoljePopusta;
   napomena: string;
 };
 
@@ -89,7 +105,7 @@ export function prazanUredivac(): StanjeUredivaca {
     ugradnja: { ukljucena: false, m2: "", rucno: false, cijenaM2: "" },
     ljepilo: { ukljuceno: false, kom: "", cijena: "" },
     prijevoz: { ukljucen: false, iznos: "" },
-    popust: { tip: "posto", vrijednost: "" },
+    popust: prazanPopust(),
     napomena: "",
   };
 }
@@ -116,17 +132,18 @@ export type PodaciPredracuna = {
   vrijediDana: number | null;
   napomena: string;
   /** Cijene se ne šalju: server uzima snimak iz baze. */
-  stavke: { artiklId: number; unos: JedinicaUnosa; kolicina: number }[];
+  stavke: { artiklId: number; unos: JedinicaUnosa; kolicina: number; popust: Popust | null }[];
   ugradnja: { m2: number; cijenaM2: number } | null;
   ljepilo: { kom: number; cijena: number } | null;
   prijevoz: number | null;
-  popust: { tip: "posto" | "km"; vrijednost: number } | null;
+  popust: Popust | null;
 };
 
 /** Ključevi grešaka: polja uređivača, a za stavke `stavka:<artiklId>`. */
 export type GreskeUredivaca = Partial<Record<string, string>>;
 
 export const kljucStavke = (artiklId: number) => `stavka:${artiklId}`;
+export const kljucPopustaStavke = (artiklId: number) => `popust:${artiklId}`;
 
 /** `veceOd`: broj mora biti strogo veći od `najmanje` (količine), inače ≥ (iznosi). */
 type PravilaBroja = { decimala: number; najmanje: number; veceOd?: boolean; najvise: number; prevelik?: string };
@@ -171,13 +188,21 @@ export function procitajUredivac(s: StanjeUredivaca, predlozeniM2Ugradnje: numbe
 
   const stavke: PodaciPredracuna["stavke"] = [];
   for (const st of s.stavke) {
+    const popustStavke = procitajPopust(st.popust);
+    if ("greska" in popustStavke) greske[kljucPopustaStavke(st.artiklId)] = popustStavke.greska;
     if (st.unos === "m2" && st.m2PoKomadu == null) {
       greske[kljucStavke(st.artiklId)] = "Obloga nema m² po komadu. Upišite količinu u komadima.";
       continue;
     }
     const r = procitajBroj(st.kolicina, pravilaKolicine(st.unos));
-    if ("broj" in r) stavke.push({ artiklId: st.artiklId, unos: st.unos, kolicina: r.broj });
-    else greske[kljucStavke(st.artiklId)] = "greska" in r ? r.greska : "Upišite količinu.";
+    if ("broj" in r) {
+      stavke.push({
+        artiklId: st.artiklId,
+        unos: st.unos,
+        kolicina: r.broj,
+        popust: "popust" in popustStavke ? popustStavke.popust : null,
+      });
+    } else greske[kljucStavke(st.artiklId)] = "greska" in r ? r.greska : "Upišite količinu.";
   }
   if (s.stavke.length === 0) greske.stavke = "Dodajte barem jednu oblogu.";
 
@@ -210,15 +235,9 @@ export function procitajUredivac(s: StanjeUredivaca, predlozeniM2Ugradnje: numbe
     else greske.prijevoz = "greska" in r ? r.greska : "Upišite iznos prijevoza.";
   }
 
-  let popust: PodaciPredracuna["popust"] = null;
-  const p = procitajBroj(
-    s.popust.vrijednost,
-    s.popust.tip === "posto"
-      ? { decimala: 2, najmanje: 0, najvise: 100, prevelik: "Popust može biti najviše 100 %." }
-      : IZNOS_KM,
-  );
-  if ("greska" in p) greske.popust = p.greska;
-  else if ("broj" in p && p.broj > 0) popust = { tip: s.popust.tip, vrijednost: p.broj };
+  const ukupniPopust = procitajPopust(s.popust);
+  if ("greska" in ukupniPopust) greske.popust = ukupniPopust.greska;
+  const popust = "popust" in ukupniPopust ? ukupniPopust.popust : null;
 
   let vrijediDana: number | null = null;
   const dana = procitajBroj(s.vrijediDana, {
@@ -270,6 +289,16 @@ export function procitajUredivac(s: StanjeUredivaca, predlozeniM2Ugradnje: numbe
   };
 }
 
+/** Polje popusta → popust (null = prazno ili 0) ili greška. Isto za ukupni popust i popust stavke. */
+function procitajPopust(p: PoljePopusta): { popust: Popust | null } | { greska: string } {
+  const r = procitajBroj(
+    p.vrijednost,
+    p.tip === "posto" ? { decimala: 2, najmanje: 0, najvise: 100, prevelik: "Popust može biti najviše 100 %." } : IZNOS_KM,
+  );
+  if ("greska" in r) return { greska: r.greska };
+  return { popust: "broj" in r && r.broj > 0 ? { tip: p.tip, vrijednost: r.broj } : null };
+}
+
 /** "YYYY-MM-DD" koji postoji u kalendaru (npr. ne 2026-02-30). */
 export function jeIspravanDatum(t: string): boolean {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
@@ -302,7 +331,13 @@ export function izracunajPredracun(
     stavke: podaci.stavke.map((st) => {
       const s = snimak.get(st.artiklId);
       if (!s) throw new Error("Obloga iz predračuna nije pronađena.");
-      return { cijenaKomFen: kmUFen(s.cijenaKom), m2PoKomadu: s.m2PoKomadu, unos: st.unos, kolicina: st.kolicina };
+      return {
+        cijenaKomFen: kmUFen(s.cijenaKom),
+        m2PoKomadu: s.m2PoKomadu,
+        unos: st.unos,
+        kolicina: st.kolicina,
+        popust: st.popust ?? undefined,
+      };
     }),
     ugradnja: podaci.ugradnja ? { m2: podaci.ugradnja.m2, cijenaM2Fen: kmUFen(podaci.ugradnja.cijenaM2) } : undefined,
     ljepilo: podaci.ljepilo ? { kom: podaci.ljepilo.kom, cijenaFen: kmUFen(podaci.ljepilo.cijena) } : undefined,
@@ -323,8 +358,10 @@ export function prevelikIznos(r: RezultatKalkulacije): boolean {
  * ------------------------------------------------------------------------- */
 
 export type IznosiRazrade = {
-  /** Zbroj stavki (obloga). */
+  /** Zbroj stavki (obloga) nakon popusta stavki. */
   stavke: number;
+  /** Zbroj popusta stavki (već oduzet u `stavke`). */
+  popustStavki: number;
   /** null = dodatak nije uključen. */
   ugradnja: number | null;
   ljepilo: number | null;
@@ -344,6 +381,7 @@ export type IznosiRazrade = {
 export function iznosiRazrade(ulaz: UlazKalkulacije, r: RezultatKalkulacije): IznosiRazrade {
   return {
     stavke: fenUKm(r.stavkeFen),
+    popustStavki: fenUKm(r.popustStavkiFen),
     ugradnja: ulaz.ugradnja ? fenUKm(r.ugradnjaFen) : null,
     ljepilo: ulaz.ljepilo ? fenUKm(r.ljepiloFen) : null,
     prijevoz: ulaz.prijevozFen !== undefined ? fenUKm(r.prijevozFen) : null,
@@ -375,7 +413,13 @@ export function iznosiSpremljenog(
   },
 ): IznosiRazrade {
   const ulaz: UlazKalkulacije = {
-    stavke: p.stavke.map((s) => ({ cijenaKomFen: kmUFen(s.cijena_kom), m2PoKomadu: s.m2_po_komadu, unos: "kom", kolicina: s.komada })),
+    stavke: p.stavke.map((s) => ({
+      cijenaKomFen: kmUFen(s.cijena_kom),
+      m2PoKomadu: s.m2_po_komadu,
+      unos: "kom",
+      kolicina: s.komada,
+      popust: s.popust_tip && s.popust_vrijednost !== null ? { tip: s.popust_tip, vrijednost: s.popust_vrijednost } : undefined,
+    })),
     ugradnja: p.ugradnja_m2 !== null ? { m2: p.ugradnja_m2, cijenaM2Fen: kmUFen(p.ugradnja_cijena_m2 ?? 0) } : undefined,
     ljepilo: p.ljepilo_kom !== null ? { kom: p.ljepilo_kom, cijenaFen: kmUFen(p.ljepilo_cijena ?? 0) } : undefined,
     prijevozFen: p.prijevoz !== null ? kmUFen(p.prijevoz) : undefined,
@@ -442,6 +486,9 @@ export function podaciZaRpc(
         unos: st.unos,
         unesena_m2: st.unos === "m2" ? st.kolicina : null,
         komada: r.komada,
+        popust_tip: st.popust?.tip ?? null,
+        popust_vrijednost: st.popust?.vrijednost ?? null,
+        popust_iznos: fenUKm(r.popustFen),
         iznos: fenUKm(r.iznosFen),
       };
     }),
@@ -502,6 +549,8 @@ export type SpremljeniPredracun = {
     unos: JedinicaUnosa;
     unesena_m2: number | null;
     komada: number;
+    popust_tip: "posto" | "km" | null;
+    popust_vrijednost: number | null;
     slika: string | null;
   }[];
 };
@@ -518,6 +567,10 @@ function dodaciIzSpremljenog(p: SpremljeniPredracun): Pick<StanjeUredivaca, "ugr
     prijevoz: { ukljucen: p.prijevoz !== null, iznos: uPolje(p.prijevoz) },
     popust: { tip: p.popust_tip ?? "posto", vrijednost: uPolje(p.popust_vrijednost) },
   };
+}
+
+function popustStavke(s: SpremljeniPredracun["stavke"][number]): PoljePopusta {
+  return { tip: s.popust_tip ?? "posto", vrijednost: uPolje(s.popust_vrijednost) };
 }
 
 function kolicinaStavke(s: SpremljeniPredracun["stavke"][number]): string {
@@ -545,6 +598,7 @@ export function uredivacIzPredracuna(p: SpremljeniPredracun): StanjeUredivaca {
       m2PoKomadu: s.m2_po_komadu,
       unos: s.unos,
       kolicina: kolicinaStavke(s),
+      popust: popustStavke(s),
     })),
     ...dodaciIzSpremljenog(p),
   };
@@ -560,7 +614,7 @@ export type TrenutnaObloga = {
 };
 
 /**
- * Kopiraj (PRD §5.5): iste stavke, dodaci i popust po trenutnim cijenama obloga, prazan kupac i napomena.
+ * Kopiraj (PRD §5.5): iste stavke (s popustima stavki), dodaci i popust po trenutnim cijenama obloga, prazan kupac i napomena.
  * Način plaćanja i rok valjanosti se prenose; svrha i datum isporuke ostaju prazni (vežu se uz kupca).
  * Arhivirane (ili obrisane) obloge se preskaču i vraćaju u `preskocene`.
  */
@@ -586,6 +640,7 @@ export function uredivacIzKopije(
       m2PoKomadu: o.m2_po_komadu,
       unos: uM2 ? "m2" : "kom",
       kolicina: uM2 ? uPolje(s.unesena_m2) : uPolje(s.komada, 0),
+      popust: popustStavke(s),
     });
   }
   return {

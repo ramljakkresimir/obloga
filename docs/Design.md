@@ -230,14 +230,15 @@ Jedan pomični ekran sa sekcijama:
 2. **Obloge**: kartica za svaku stavku:
    - sličica, naziv, „22,00 KM/kom",
    - prekidač **m² | kom**, veliko brojčano polje (12,5 m²),
-   - izračun ispod: **„= 28 kom · 12,54 m² · 616,00 KM"**,
+   - gumb **„+ Popust na stavku"** otvara segment **% | KM** + polje (i ✕ za uklanjanje),
+   - izračun ispod: **„= 28 kom · 12,54 m² · 616,00 KM"**; s popustom: „= 28 kom · 12,54 m² · ~~616,00 KM~~ 554,40 KM (−61,60 KM)",
    - ikona za uklanjanje.
    - Gumb **„+ Dodaj oblogu"** otvara **donji list s mrežom obloga** (slike, pretraga, čipovi). Dodir na oblogu je dodaje.
 3. **Dodaci**: tri retka sa switchem, po zadanom isključeni. Kad se uključe, otvore se polja:
    - **Ugradnja**: m² (predloženo 12,5) × cijena/m² (KM) → „187,50 KM"
    - **Ljepilo**: kom × cijena (predloženo 12,00 KM) → „48,00 KM"
    - **Prijevoz**: iznos (KM) → „25,00 KM"
-4. **Popust**: segment **% | KM** + polje → „−43,83 KM".
+4. **Popust** (ukupni, na zbroj nakon popusta stavki): segment **% | KM** + polje → „−43,83 KM".
 5. **Napomena** (interna, „ne ide na PDF").
 
 **Ljepljiva traka**: „Ukupno **832,67 KM**" (dodir otvara razradu) i gumb **„Spremi predračun"**.
@@ -311,7 +312,7 @@ Kopija Excel predloška vlasnika „Predračun Obloga.ba.xlsx” (crno-bijelo, A
 - **Kupac**: **Kupac:** Mirko Mandura · Adresa: Matina · JIB: · Tel.: 067 10 08 437. Prazna polja ostaju prazna.
 - **Tablica**: zaglavlje podebljano s tankom crtom iznad i ispod: **Red. Br. · Naziv artikla · Količina/kom · Cijena/ kom · Popust % · Vrijednost:**. Retci bez crta, najmanje 6 redaka:
   - 1. · PVC panel · 2 · 105,00 KM · · 210,00 KM
-  - Količina u m² ide u zagradu: „28 (12,5 m²)”. Ljepilo je redak tablice. Popust % je postotak popusta cijelog predračuna (prazno za popust u KM).
+  - Količina u m² ide u zagradu: „28 (12,5 m²)”. Ljepilo je redak tablice. **Popust %** je popust te stavke („10%” ili „5,00 KM”, prazno bez popusta), a **Vrijednost** je iznos stavke nakon tog popusta. Ukupni popust je samo red u zbroju.
 - **Ugradnja** (samo kad je uključena): posebna tablica „Ugradnja:” · m2 · Cijena/ m2 · iznos.
 - **Zbroj desno**: Ukupna cijena materijala: · (Ugradnja:) · Cijena dostave: · (Popust:) · (Osnovica: / PDV 17%:), srednja crta ispod zadnjeg reda, pa **Ukupno za platiti:**.
 - **Uvjeti**: lijevo „Datum isporuke:”; desno „Način plaćanja: gotovinsko”, „Svrha:”, „PDV uračunat u cijene” (u sustavu PDV-a s cijenama bez PDV-a: „Cijene su bez PDV-a”).

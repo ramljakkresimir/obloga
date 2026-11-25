@@ -329,10 +329,15 @@ create table public.predracun_stavke (
   unos          public.jedinica_unosa not null,
   unesena_m2    numeric(10,2) check (unesena_m2 > 0),
   komada        integer not null check (komada > 0),
-  iznos         numeric(12,2) not null,
+  -- popust stavke (od 0011): % ili KM na cijelu stavku; null = bez popusta
+  popust_tip        public.tip_popusta,
+  popust_vrijednost numeric(10,2) check (popust_vrijednost >= 0),
+  popust_iznos      numeric(12,2) not null default 0 check (popust_iznos >= 0),
+  iznos         numeric(12,2) not null,           -- komada × cijena_kom − popust_iznos
 
   constraint stavka_unos_ck check ((unos = 'm2') = (unesena_m2 is not null)),
-  constraint stavka_m2_ck   check (unos = 'kom' or m2_po_komadu is not null)
+  constraint stavka_m2_ck   check (unos = 'kom' or m2_po_komadu is not null),
+  constraint stavka_popust_ck check ((popust_tip is null) = (popust_vrijednost is null))
 );
 
 create index predracun_stavke_predracun_id_idx on public.predracun_stavke (predracun_id);
@@ -443,7 +448,8 @@ Zajedničko svim RPC funkcijama koje pišu:
   "kopija_od": null,
   "stavke": [
     { "artikl_id": 1, "naziv": "WPC panel 16×280 – Svijetli hrast", "cijena_kom": 22.00,
-      "m2_po_komadu": 0.448, "unos": "m2", "unesena_m2": 12.5, "komada": 28, "iznos": 616.00 }
+      "m2_po_komadu": 0.448, "unos": "m2", "unesena_m2": 12.5, "komada": 28,
+      "popust_tip": "posto", "popust_vrijednost": 10, "popust_iznos": 61.60, "iznos": 554.40 }
   ]
 }
 ```

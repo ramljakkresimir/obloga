@@ -11,8 +11,10 @@ import {
   DUZINA,
   iznosiRazrade,
   izracunajPredracun,
+  kljucPopustaStavke,
   kljucStavke,
   manjak,
+  prazanPopust,
   predlozeniM2,
   procitajUredivac,
   type GreskeUredivaca,
@@ -184,6 +186,7 @@ export function UredivacPredracuna({
         m2PoKomadu,
         unos: m2PoKomadu != null ? "m2" : "kom",
         kolicina: "",
+        popust: prazanPopust(),
       };
       setGreska(null);
       setStanje((s) => ({ ...s, stavke: [...s.stavke, nova] }));
@@ -333,6 +336,7 @@ export function UredivacPredracuna({
                   stavka={s}
                   rezultat={izracun.poStavci.get(s.artiklId) ?? null}
                   greska={greskaPolja(kljucStavke(s.artiklId), s.kolicina)}
+                  greskaPopusta={greskaPolja(kljucPopustaStavke(s.artiklId), s.popust.vrijednost)}
                   naStanju={naStanju.get(s.artiklId) ?? null}
                   onPromjena={promijeniStavku}
                   onUkloni={() => ukloniStavku(s.artiklId)}
@@ -375,7 +379,7 @@ export function UredivacPredracuna({
           </Kartica>
         )}
 
-        <Kartica naslov="Popust">
+        <Kartica naslov="Ukupni popust">
           <Popust
             popust={stanje.popust}
             onPromjena={(popust) => promijeni({ popust })}

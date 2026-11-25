@@ -47,7 +47,7 @@ export type PredracunZaPdf = Omit<SpremljeniPredracun, "stavke"> &
     | "osnovica"
     | "pdv_iznos"
     | "ukupno"
-  > & { stavke: (SpremljeniPredracun["stavke"][number] & { iznos: number })[] };
+  > & { stavke: (SpremljeniPredracun["stavke"][number] & { popust_iznos: number; iznos: number })[] };
 
 export type VrstaKontakta = "web" | "instagram" | "whatsapp" | "viber";
 export type KontaktPdf = { vrsta: VrstaKontakta; tekst: string };
@@ -111,6 +111,12 @@ const neprazno = (...dijelovi: (string | null | undefined)[]) =>
 /** Popust u postotku kao u Excelu (format 0%): 5 → "5%", 7,5 → "7,5%". */
 const posto = (n: number) => `${formatBroj(n)}%`;
 
+/** Popust stavke za stupac „Popust %”: "10%" ili "5,00 KM"; prazno bez popusta. */
+function popustStavke(s: PredracunZaPdf["stavke"][number]): string {
+  if (s.popust_iznos <= 0 || !s.popust_tip || s.popust_vrijednost === null) return "";
+  return s.popust_tip === "posto" ? posto(s.popust_vrijednost) : formatKM(s.popust_vrijednost);
+}
+
 /**
  * Spremljeni predračun + podaci firme → model PDF-a. Iznosi su oni spremljeni u bazi.
  * Interna napomena namjerno nije u modelu (ne ide na PDF).
@@ -119,14 +125,12 @@ export function modelPdf(p: PredracunZaPdf, firma: FirmaPdf): PredracunPdf {
   if (!p.broj) throw new Error("Predračun nema broj.");
   const r = iznosiSpremljenog(p);
 
-  // Popust je jedan za cijeli predračun: postotak se upisuje u svaki redak, iznos je u zbroju.
-  const popustRetka = r.popust > 0 && r.popustPosto !== null ? posto(r.popustPosto) : "";
-
+  // Stupac „Popust %” = popust te stavke; ukupni popust je zaseban red u zbroju. Vrijednost je nakon popusta stavke.
   const retci: Omit<RedakPdf, "rb">[] = p.stavke.map((s) => ({
     naziv: s.naziv,
     kolicina: `${s.komada}${s.unos === "m2" && s.unesena_m2 !== null ? ` (${formatM2(s.unesena_m2)})` : ""}`,
     cijena: formatKM(s.cijena_kom),
-    popust: popustRetka,
+    popust: popustStavke(s),
     iznos: formatKM(s.iznos),
   }));
   if (p.ljepilo_kom !== null && r.ljepilo !== null) {
@@ -134,7 +138,7 @@ export function modelPdf(p: PredracunZaPdf, firma: FirmaPdf): PredracunPdf {
       naziv: "Ljepilo",
       kolicina: String(p.ljepilo_kom),
       cijena: formatKM(p.ljepilo_cijena ?? 0),
-      popust: popustRetka,
+      popust: "",
       iznos: formatKM(r.ljepilo),
     });
   }

@@ -117,11 +117,12 @@ Početni ekran daje kratak pregled:
    - u **m²**: aplikacija izračuna potrebne komade (zaokruženo **naviše**, bez rezerve);
    - u **kom**: npr. kupac želi „3 ploče".
    - Uz svaku stavku se prikazuje: komada, m², cijena/kom, iznos.
+   - Svaka stavka (obloga) može imati svoj **popust**, u % ili u KM (KM = popust na cijelu stavku). Popust stavke ne može biti veći od njenog iznosa.
 3. **Dodaci** (svaki ima svoj prekidač i po zadanom je **isključen**):
    - **Ugradnja**: m² (predlaže se zbroj m² stavki, može se promijeniti) × cijena po m², koja se **upisuje ručno** na svakom predračunu.
    - **Ljepilo**: broj komada × cijena (cijena se predlaže iz Postavki). Ljepilo **ne skida** stanje.
    - **Prijevoz**: fiksni iznos u KM, upisuje se ručno.
-4. **Popust** (opcionalno): na ukupan iznos, **u % ili u KM**.
+4. **Popust** (opcionalno): ukupni popust, **u % ili u KM**, na zbroj nakon popusta stavki.
 5. **Interna napomena** (ne ide na PDF).
 
 **Ukupan iznos se uvijek vidi** na dnu ekrana i mijenja se odmah kod svake promjene.
@@ -208,13 +209,13 @@ Početni ekran daje kratak pregled:
 
 ### 6.2 Redoslijed izračuna
 
-1. Iznos svake stavke = komada × cijena/kom.
+1. Iznos svake stavke = komada × cijena/kom − popust stavke (% od komada × cijena/kom ili KM, najviše do iznosa stavke). Ugradnja, ljepilo i prijevoz nemaju popust stavke.
 2. Uključeni dodaci:
    - ugradnja = m² × cijena/m²,
    - ljepilo = kom × cijena,
    - prijevoz = iznos.
 3. **Međuzbroj** = stavke + dodaci.
-4. **Popust**: % od međuzbroja ili fiksni iznos u KM. Ne može biti veći od međuzbroja.
+4. **Popust** (ukupni): % od međuzbroja ili fiksni iznos u KM. Ne može biti veći od međuzbroja.
 5. **Iznos nakon popusta** = međuzbroj − popust.
 6. **PDV** prema postavkama (vidi 6.3).
 7. Svi iznosi se zaokružuju na **2 decimale** (standardno zaokruživanje).
@@ -353,7 +354,7 @@ Ovo **nije** dio prve verzije, ali se može dodati kasnije:
 - [ ] **Ljepilo**: samo stavka cijene (kom × cijena), ne prati stanje (11)
 - [ ] **Prijevoz**: fiksni iznos u KM (9)
 - [ ] Ugradnja, ljepilo i prijevoz su **isključeni po zadanom**, uključuju se po potrebi (26)
-- [ ] **Popust** na ukupno, u % ili KM (25)
+- [ ] **Popust** na ukupno i na svaku stavku, u % ili KM (25)
 - [ ] PDV podesiv u postavkama (3 načina) (4)
 - [ ] Ukupan iznos uvijek vidljiv, izračun uživo
 - [ ] Broj `1-26.`, od 1 svake godine (28)

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import type { StavkaDetalja } from "@/lib/data/predracuni";
-import { formatKM, formatM2 } from "@/lib/format";
+import { formatBroj, formatKM, formatM2 } from "@/lib/format";
 import { SlikaObloge } from "@/components/obloge/SlikaObloge";
 
-/** Stavke spremljenog predračuna ili brze prodaje: slika, naziv, kom (m²) × cijena, iznos. */
+/** Stavke spremljenog predračuna ili brze prodaje: slika, naziv, kom (m²) × cijena, popust stavke, iznos nakon popusta. */
 export function StavkeDetalja({ stavke }: { stavke: StavkaDetalja[] }) {
   return (
     <ul className="-my-3 divide-y divide-rub">
@@ -29,6 +29,12 @@ export function StavkeDetalja({ stavke }: { stavke: StavkaDetalja[] }) {
               {s.komada} kom{s.unos === "m2" && s.unesena_m2 !== null && <> ({formatM2(s.unesena_m2)})</>} ×{" "}
               {formatKM(s.cijena_kom)}
             </p>
+            {s.popust_iznos > 0 && (
+              <p className="text-sm text-uspjeh tabular-nums">
+                Popust {s.popust_tip === "posto" && s.popust_vrijednost !== null ? `${formatBroj(s.popust_vrijednost)} % ` : ""}
+                (−{formatKM(s.popust_iznos)})
+              </p>
+            )}
           </div>
           <p className="shrink-0 font-naslov font-semibold text-espresso tabular-nums">{formatKM(s.iznos)}</p>
         </li>
